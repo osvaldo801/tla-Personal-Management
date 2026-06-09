@@ -10,6 +10,7 @@ Aplicacion administrativa React + TypeScript + Vite + Tailwind + Supabase para g
 - Branding global para logo, nombre, direccion y telefono.
 - Upload y reemplazo de logo en Supabase Storage.
 - Migracion SQL para `users`, `organization_settings`, RLS y bucket `organization-assets`.
+- Modo demo automatico cuando faltan variables de Supabase.
 
 ## Configuracion
 
@@ -57,3 +58,5 @@ npm run dev
 ## Nota de permisos
 
 La app lee el rol desde `public.users`. Si un usuario entra con Google pero no existe en esa tabla, vera una pantalla de acceso pendiente.
+
+Si `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` no existen, la app entra en modo demo con `osvaldo801@gmail.com` como administrador.
