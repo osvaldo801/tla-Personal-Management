@@ -1,6 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { ImageUp, Save } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useAuth } from "../providers/AuthProvider";
 import { useOrganizationSettings } from "../providers/OrganizationProvider";
 import type { OrganizationSettings } from "../types";
@@ -111,6 +111,12 @@ export function OrganizationSettingsPage() {
     setIsSaving(true);
 
     try {
+      if (!isSupabaseConfigured) {
+        setLogoFile(null);
+        setMessage("Cambios guardados en modo demo. Conecta Supabase para persistencia real.");
+        return;
+      }
+
       const logoUrl = await uploadLogoIfNeeded();
       const payload = {
         id: settings.id,
