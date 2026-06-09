@@ -52,8 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
 
       setSession(data.session);
-      await loadProfile(data.session?.user.id ?? null);
+      await ensureProfile(data.session?.user.id ?? null);
       setIsLoading(false);
+    }
+
+    async function ensureProfile(userId: string | null) {
+      if (!userId) {
+        setProfile(null);
+        return;
+      }
+
+      await supabase.rpc("ensure_current_user_profile");
+      await loadProfile(userId);
     }
 
     async function loadProfile(userId: string | null) {
@@ -80,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
-      await loadProfile(nextSession?.user.id ?? null);
+      await ensureProfile(nextSession?.user.id ?? null);
       setIsLoading(false);
     });
 
