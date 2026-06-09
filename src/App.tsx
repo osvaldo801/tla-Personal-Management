@@ -1,11 +1,10 @@
-import { Building2, LayoutDashboard, LogOut, Menu, Settings, Users, X } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, Settings, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { OrganizationSettingsPage } from "./pages/OrganizationSettingsPage";
 import { useAuth } from "./providers/AuthProvider";
 import { useOrganizationSettings } from "./providers/OrganizationProvider";
-import { isSupabaseConfigured } from "./lib/supabase";
 
 type View = "dashboard" | "organization-settings";
 
@@ -17,10 +16,6 @@ export function App() {
 
   if (isLoading) {
     return <div className="screen-center">Cargando...</div>;
-  }
-
-  if (!isSupabaseConfigured) {
-    return <SetupRequired />;
   }
 
   if (!session) {
@@ -112,16 +107,6 @@ export function App() {
           {view === "organization-settings" && isAdmin && <OrganizationSettingsPage />}
         </main>
       </div>
-    </div>
-  );
-}
-
-function SetupRequired() {
-  return (
-    <div className="screen-center access-card">
-      <Building2 size={40} />
-      <h1>Configura Supabase</h1>
-      <p>Crea un archivo `.env` usando `.env.example` y agrega `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.</p>
     </div>
   );
 }
