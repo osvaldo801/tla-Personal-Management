@@ -1,12 +1,14 @@
-import { LayoutDashboard, LogOut, Menu, Settings, Users, X } from "lucide-react";
+import { Building2, LayoutDashboard, LogOut, Menu, Settings, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
+import { MinistriesPage } from "./pages/MinistriesPage";
 import { OrganizationSettingsPage } from "./pages/OrganizationSettingsPage";
+import { ProfilesPage } from "./pages/ProfilesPage";
 import { useAuth } from "./providers/AuthProvider";
 import { useOrganizationSettings } from "./providers/OrganizationProvider";
 
-type View = "dashboard" | "organization-settings";
+type View = "dashboard" | "profiles" | "ministries" | "organization-settings";
 
 export function App() {
   const { session, profile, isAdmin, isLoading, signOut } = useAuth();
@@ -37,6 +39,8 @@ export function App() {
 
   const nav = [
     { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard, visible: true },
+    { id: "profiles" as const, label: "Perfiles", icon: Users, visible: true },
+    { id: "ministries" as const, label: "Ministerios", icon: Building2, visible: isAdmin },
     { id: "organization-settings" as const, label: "Configuracion de Organizacion", icon: Settings, visible: isAdmin },
   ];
 
@@ -104,6 +108,8 @@ export function App() {
 
         <main className="content">
           {view === "dashboard" && <Dashboard />}
+          {view === "profiles" && <ProfilesPage />}
+          {view === "ministries" && isAdmin && <MinistriesPage />}
           {view === "organization-settings" && isAdmin && <OrganizationSettingsPage />}
         </main>
       </div>
