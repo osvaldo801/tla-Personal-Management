@@ -16,6 +16,22 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const demoProfile: AdminUser = {
+  id: "demo-admin",
+  full_name: "Osvaldo Vasquez",
+  email: "osvaldo801@gmail.com",
+  role: "admin",
+  ministry_id: null,
+  created_at: new Date().toISOString(),
+};
+
+const demoSession = {
+  user: {
+    id: "demo-admin",
+    email: "osvaldo801@gmail.com",
+  },
+} as Session;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<AdminUser | null>(null);
@@ -26,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function loadSession() {
       if (!isSupabaseConfigured) {
+        setSession(demoSession);
+        setProfile(demoProfile);
         setIsLoading(false);
         return;
       }
@@ -80,6 +98,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: profile?.role === "admin",
       isLoading,
       signInWithGoogle: async () => {
+        if (!isSupabaseConfigured) {
+          setSession(demoSession);
+          setProfile(demoProfile);
+          return;
+        }
+
         await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
@@ -88,6 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       },
       signOut: async () => {
+        if (!isSupabaseConfigured) {
+          setSession(demoSession);
+          setProfile(demoProfile);
+          return;
+        }
+
         await supabase.auth.signOut();
       },
     }),
