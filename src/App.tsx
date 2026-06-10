@@ -41,7 +41,7 @@ export function App() {
 
   const nav = [
     { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard, visible: true },
-    { id: "profiles" as const, label: "Perfiles", icon: Users, visible: true },
+    { id: "profiles" as const, label: "Servidores", icon: Users, visible: true },
     { id: "ministries" as const, label: "Ministerios", icon: Building2, visible: isAdmin },
     { id: "users" as const, label: "Usuarios y Roles", icon: ShieldCheck, visible: isAdmin },
     { id: "organization-settings" as const, label: "Configuracion de Organizacion", icon: Settings, visible: isAdmin },
