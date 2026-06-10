@@ -38,6 +38,8 @@ const defaultForm: UserFormState = {
   ministry_id: "",
 };
 
+const publicAppUrl = "https://tla-personal-management.vercel.app";
+
 export function UsersPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(defaultForm);
@@ -92,7 +94,7 @@ export function UsersPage() {
           email: invitation.email ?? payload.email.trim().toLowerCase(),
           full_name: invitation.full_name ?? payload.full_name.trim(),
           token: invitation.token,
-          app_url: window.location.origin,
+          app_url: publicAppUrl,
         },
       });
 
@@ -350,5 +352,5 @@ async function fetchUsersPageData(): Promise<{ users: ManagedUser[]; ministries:
 }
 
 function buildInviteLink(token: string) {
-  return `${window.location.origin}/?invite=${token}`;
+  return `${publicAppUrl}/?invite=${token}`;
 }
