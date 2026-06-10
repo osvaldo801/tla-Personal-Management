@@ -173,7 +173,8 @@
 }
 
 .user-form,
-.profile-editor-grid {
+.profile-editor-grid,
+.catalog-form {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
@@ -182,6 +183,10 @@
 
 .user-form {
   grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+}
+
+.catalog-form {
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) auto auto;
 }
 
 .user-form .alert,
@@ -264,6 +269,36 @@
   letter-spacing: 0;
 }
 
+.analytics-card h2,
+.panel h2,
+.page-heading.compact h1,
+.filter-box h3 {
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.catalog-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.catalog-row {
+  min-height: 52px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+}
+
+.catalog-row span {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+}
+
 @media (max-width: 900px) {
   .desktop-profile-table {
     display: none;
@@ -277,8 +312,13 @@
   .profile-detail-grid,
   .profile-editor-grid,
   .user-form,
+  .catalog-form,
   .dashboard-quick-row,
   .birthdays-card {
+    grid-template-columns: 1fr;
+  }
+
+  .catalog-row {
     grid-template-columns: 1fr;
   }
 
