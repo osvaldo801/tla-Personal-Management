@@ -1,0 +1,176 @@
+.dashboard-quick-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.quick-search-card,
+.birthdays-card {
+  min-height: 220px;
+}
+
+.quick-results {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.quick-result-button {
+  min-height: 48px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: hsl(var(--foreground));
+  display: grid;
+  gap: 3px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quick-result-button:hover {
+  background: hsl(var(--muted));
+}
+
+.quick-results span,
+.birthday-list span,
+.comment-cell span {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+}
+
+.birthdays-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.birthdays-card h2 {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.birthday-list {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.birthday-list h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+}
+
+.birthday-list p {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+}
+
+.birthday-list div {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.comment-cell {
+  max-width: 280px;
+}
+
+.comment-cell strong {
+  line-height: 1.35;
+}
+
+.row-actions {
+  min-width: 220px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.row-actions select,
+.field select {
+  min-height: 38px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: hsl(var(--foreground));
+}
+
+.user-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.user-form .alert,
+.user-form .form-note {
+  grid-column: 1 / -1;
+}
+
+.form-note {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted));
+  font-size: 14px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(15 23 42 / 50%);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  z-index: 50;
+}
+
+.modal-panel {
+  width: min(100%, 520px);
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  padding: 20px;
+  box-shadow: 0 24px 60px rgb(15 23 42 / 20%);
+  display: grid;
+  gap: 14px;
+}
+
+.modal-panel h2,
+.modal-panel p {
+  margin: 0;
+}
+
+.modal-panel p {
+  color: hsl(var(--muted-foreground));
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.version-label {
+  margin-top: -4px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+@media (max-width: 640px) {
+  .dashboard-quick-row,
+  .birthdays-card,
+  .user-form {
+    grid-template-columns: 1fr;
+  }
+}
