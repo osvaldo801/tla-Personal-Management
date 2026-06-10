@@ -1,13 +1,16 @@
 import { Search, SlidersHorizontal } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { demoMinistries, demoProfiles, type DemoMinistry, type DemoProfile } from "../data/demoData";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 
-export function ProfilesPage() {
-  const [query, setQuery] = useState("");
+export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
+  const [query, setQuery] = useState(initialQuery);
   const [ministry, setMinistry] = useState("Todos");
   const [status, setStatus] = useState("Todos");
+  const [selectedProfile, setSelectedProfile] = useState<DemoProfile | null>(null);
+  const [comment, setComment] = useState("");
+  const queryClient = useQueryClient();
   const { data } = useQuery({
     queryKey: ["profiles-page-data"],
     queryFn: fetchProfilesPageData,
@@ -16,6 +19,10 @@ export function ProfilesPage() {
 
   const profiles = data.profiles;
   const ministries = data.ministries;
+
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   const filteredProfiles = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -32,6 +39,35 @@ export function ProfilesPage() {
       return matchesQuery && matchesMinistry && matchesStatus;
     });
   }, [ministry, profiles, query, status]);
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, service_status }: { id: string; service_status: DemoProfile["service_status"] }) => {
+      if (!isSupabaseConfigured) return;
+      const { error } = await supabase.from("server_profiles").update({ service_status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] }),
+  });
+
+  const addComment = useMutation({
+    mutationFn: async () => {
+      if (!selectedProfile || !comment.trim()) return;
+      if (!isSupabaseConfigured) {
+        setComment("");
+        return;
+      }
+      const { error } = await supabase.from("comments").insert({
+        profile_id: selectedProfile.id,
+        comment: comment.trim(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      setComment("");
+      setSelectedProfile(null);
+      await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
+    },
+  });
 
   return (
     <div className="page-stack">
@@ -84,6 +120,8 @@ export function ProfilesPage() {
                 <th>Tipo</th>
                 <th>Telefono</th>
                 <th>Email</th>
+                <th>Ultimo comentario</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -102,12 +140,71 @@ export function ProfilesPage() {
                   <td>{profile.service_type}</td>
                   <td>{profile.phone}</td>
                   <td>{profile.email}</td>
+                  <td className="comment-cell">
+                    <strong>{profile.last_comment || "Sin comentarios"}</strong>
+                    {profile.last_comment && (
+                      <span>
+                        {profile.last_comment_author || "Usuario"} - {formatDateTime(profile.last_comment_at)}
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="row-actions">
+                      <select
+                        value={profile.service_status}
+                        onChange={(event) =>
+                          updateStatus.mutate({
+                            id: profile.id,
+                            service_status: event.target.value as DemoProfile["service_status"],
+                          })
+                        }
+                      >
+                        <option>Activo</option>
+                        <option>Pausado</option>
+                        <option>Cancelado</option>
+                      </select>
+                      <button className="btn btn-secondary" onClick={() => setSelectedProfile(profile)} type="button">
+                        Comentar
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+
+      {selectedProfile && (
+        <div className="modal-backdrop">
+          <form
+            className="modal-panel"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addComment.mutate();
+            }}
+          >
+            <h2>{selectedProfile.full_name}</h2>
+            <p>
+              {selectedProfile.last_comment
+                ? `${selectedProfile.last_comment} - ${selectedProfile.last_comment_author || "Usuario"} - ${formatDateTime(selectedProfile.last_comment_at)}`
+                : "Sin comentarios previos."}
+            </p>
+            <label className="field">
+              <span>Nuevo comentario</span>
+              <textarea value={comment} onChange={(event) => setComment(event.target.value)} rows={4} />
+            </label>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setSelectedProfile(null)} type="button">
+                Cancelar
+              </button>
+              <button className="btn btn-primary" disabled={addComment.isPending} type="submit">
+                Guardar comentario
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
@@ -117,15 +214,23 @@ async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; pr
     return { ministries: demoMinistries, profiles: demoProfiles };
   }
 
-  const [{ data: ministriesData, error: ministriesError }, { data: profilesData, error: profilesError }] =
-    await Promise.all([
-      supabase.from("ministries").select("id, name, description, active").order("name"),
-      supabase.from("server_profiles").select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, active, ministries(name)").order("full_name"),
-    ]);
+  const [
+    { data: ministriesData, error: ministriesError },
+    { data: profilesData, error: profilesError },
+    { data: usersData, error: usersError },
+  ] = await Promise.all([
+    supabase.from("ministries").select("id, name, description, active").order("name"),
+    supabase
+      .from("server_profiles")
+      .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, active, ministries(name), comments(comment, created_at, user_id)")
+      .order("full_name"),
+    supabase.from("users").select("id, full_name, email"),
+  ]);
 
-  if (ministriesError || profilesError) {
+  if (ministriesError || profilesError || usersError) {
     return { ministries: demoMinistries, profiles: demoProfiles };
   }
+  const userById = new Map((usersData ?? []).map((user: any) => [user.id, user.full_name || user.email || "Usuario"]));
 
   return {
     ministries: (ministriesData ?? []) as DemoMinistry[],
@@ -141,6 +246,31 @@ async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; pr
       service_type: profile.service_type,
       ministry: profile.ministries?.name ?? "Sin ministerio",
       active: profile.active,
+      ...latestComment(profile.comments, userById),
     })),
   };
+}
+
+function latestComment(
+  comments: { comment: string; created_at: string; user_id: string | null }[] | null | undefined,
+  userById: Map<string, string>,
+) {
+  if (!comments?.length) return {};
+  const latest = [...comments].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+
+  return {
+    last_comment: latest?.comment ?? "",
+    last_comment_author: latest?.user_id ? userById.get(latest.user_id) ?? "Usuario" : "Sistema",
+    last_comment_at: latest?.created_at ?? "",
+  };
+}
+
+function formatDateTime(value: string | undefined) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("es-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
