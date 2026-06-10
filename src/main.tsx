@@ -6,6 +6,7 @@ import { AuthProvider } from "./providers/AuthProvider";
 import { OrganizationProvider } from "./providers/OrganizationProvider";
 import "./styles.css";
 import "./analytics.css";
+import "./admin.css";
 
 const queryClient = new QueryClient();
 
