@@ -1,12 +1,14 @@
 import type { CSSProperties } from "react";
-import { Activity, CircleDollarSign, Clock } from "lucide-react";
+import { Activity, Cake, CircleDollarSign, Clock, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { demoMinistries, demoProfiles, type DemoMinistry, type DemoProfile } from "../data/demoData";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useOrganizationSettings } from "../providers/OrganizationProvider";
 
-export function Dashboard() {
+export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) => void }) {
   const { settings } = useOrganizationSettings();
+  const [profileSearch, setProfileSearch] = useState("");
   const { data } = useQuery({
     queryKey: ["dashboard-data"],
     queryFn: fetchDashboardData,
@@ -30,6 +32,18 @@ export function Dashboard() {
   const maxMinistry = Math.max(...ministryCounts.map((item) => item.count), 1);
   const activePercent = Math.round((active / total) * 100);
   const ministerialPercent = Math.round((ministerial / total) * 100);
+  const quickResults = useMemo(() => {
+    const normalized = profileSearch.trim().toLowerCase();
+    if (!normalized) return profiles.slice(0, 5);
+    return profiles
+      .filter((profile) =>
+        [profile.full_name, profile.email, profile.phone, profile.ministry].some((value) =>
+          value.toLowerCase().includes(normalized),
+        ),
+      )
+      .slice(0, 6);
+  }, [profileSearch, profiles]);
+  const birthdayGroups = getBirthdayGroups(profiles);
 
   return (
     <div className="analytics-shell">
@@ -42,6 +56,34 @@ export function Dashboard() {
             <span>{settings.address}</span>
           </div>
         </div>
+
+        <section className="dashboard-quick-row">
+          <article className="analytics-card quick-search-card">
+            <h2>Buscar Perfil</h2>
+            <label className="search-field">
+              <Search size={18} />
+              <input
+                value={profileSearch}
+                onChange={(event) => setProfileSearch(event.target.value)}
+                placeholder="Nombre, telefono, email o ministerio"
+              />
+            </label>
+            <div className="quick-results">
+              {quickResults.map((profile) => (
+                <button className="quick-result-button" key={profile.id} onClick={() => onOpenProfile?.(profile.full_name)} type="button">
+                  <strong>{profile.full_name}</strong>
+                  <span>{profile.ministry} - {profile.phone}</span>
+                </button>
+              ))}
+            </div>
+          </article>
+
+          <article className="analytics-card birthdays-card">
+            <h2>Cumpleanos</h2>
+            <BirthdayList title="Este mes" profiles={birthdayGroups.current} />
+            <BirthdayList title="Mes siguiente" profiles={birthdayGroups.next} />
+          </article>
+        </section>
 
         <div className="analytics-grid">
           <article className="analytics-card ministry-map">
@@ -150,6 +192,55 @@ export function Dashboard() {
   );
 }
 
+function BirthdayList({ title, profiles }: { title: string; profiles: DemoProfile[] }) {
+  return (
+    <div className="birthday-list">
+      <h3>
+        <Cake size={16} />
+        {title}
+      </h3>
+      {profiles.length === 0 ? (
+        <p>Sin cumpleanos registrados.</p>
+      ) : (
+        profiles.map((profile) => (
+          <div key={profile.id}>
+            <strong>{profile.full_name}</strong>
+            <span>{formatBirthday(profile.birth_date)}</span>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function getBirthdayGroups(profiles: DemoProfile[]) {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+
+  return {
+    current: sortBirthdays(profiles.filter((profile) => getMonth(profile.birth_date) === currentMonth)),
+    next: sortBirthdays(profiles.filter((profile) => getMonth(profile.birth_date) === nextMonth)),
+  };
+}
+
+function sortBirthdays(profiles: DemoProfile[]) {
+  return [...profiles].sort((a, b) => getDay(a.birth_date) - getDay(b.birth_date));
+}
+
+function getMonth(date: string) {
+  return Number(date.slice(5, 7));
+}
+
+function getDay(date: string) {
+  return Number(date.slice(8, 10));
+}
+
+function formatBirthday(date: string) {
+  const parsed = new Date(`${date}T00:00:00`);
+  return new Intl.DateTimeFormat("es-US", { month: "long", day: "numeric" }).format(parsed);
+}
+
 async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profiles: DemoProfile[] }> {
   if (!isSupabaseConfigured) {
     return { ministries: demoMinistries, profiles: demoProfiles };
@@ -158,7 +249,7 @@ async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profi
   const [{ data: ministriesData, error: ministriesError }, { data: profilesData, error: profilesError }] =
     await Promise.all([
       supabase.from("ministries").select("id, name, description, active").order("name"),
-      supabase.from("server_profiles").select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, active, ministries(name)").order("full_name"),
+      supabase.from("server_profiles").select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, active, ministries(name), comments(comment, created_at)").order("full_name"),
     ]);
 
   if (ministriesError || profilesError) {
@@ -179,8 +270,14 @@ async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profi
       service_type: profile.service_type,
       ministry: profile.ministries?.name ?? "Sin ministerio",
       active: profile.active,
+      last_comment: latestComment(profile.comments),
     })),
   };
+}
+
+function latestComment(comments: { comment: string; created_at: string }[] | null | undefined) {
+  if (!comments?.length) return "";
+  return [...comments].sort((a, b) => b.created_at.localeCompare(a.created_at))[0]?.comment ?? "";
 }
 
 function MetricBar({ label, value, total }: { label: string; value: number; total: number }) {
