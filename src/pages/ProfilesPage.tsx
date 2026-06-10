@@ -1,24 +1,67 @@
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { demoMinistries, demoProfiles, type DemoMinistry, type DemoProfile } from "../data/demoData";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { useAuth } from "../providers/AuthProvider";
+
+type ProfileComment = {
+  id: string;
+  comment: string;
+  created_at: string;
+  author: string;
+};
+
+type ProfileRecord = DemoProfile & {
+  ministry_id?: string | null;
+  comments?: ProfileComment[];
+};
+
+type ProfileFormState = {
+  id?: string;
+  full_name: string;
+  address: string;
+  phone: string;
+  email: string;
+  birth_date: string;
+  service_start_date: string;
+  service_status: DemoProfile["service_status"];
+  service_type: DemoProfile["service_type"];
+  ministry_id: string;
+  active: boolean;
+};
+
+const emptyProfileForm: ProfileFormState = {
+  full_name: "",
+  address: "",
+  phone: "",
+  email: "",
+  birth_date: "",
+  service_start_date: "",
+  service_status: "Activo",
+  service_type: "Ministerial",
+  ministry_id: "",
+  active: true,
+};
 
 export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery);
   const [ministry, setMinistry] = useState("Todos");
   const [status, setStatus] = useState("Todos");
-  const [selectedProfile, setSelectedProfile] = useState<DemoProfile | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
+  const [editingProfile, setEditingProfile] = useState<ProfileFormState | null>(null);
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const { data } = useQuery({
     queryKey: ["profiles-page-data"],
     queryFn: fetchProfilesPageData,
-    initialData: { ministries: demoMinistries, profiles: demoProfiles },
+    initialData: { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[] },
   });
 
   const profiles = data.profiles;
   const ministries = data.ministries;
+  const detailProfile = detailId ? profiles.find((profile) => profile.id === detailId) ?? null : null;
 
   useEffect(() => {
     setQuery(initialQuery);
@@ -40,6 +83,49 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
     });
   }, [ministry, profiles, query, status]);
 
+  const profileMutation = useMutation({
+    mutationFn: async (payload: ProfileFormState) => {
+      if (!payload.full_name.trim()) throw new Error("El nombre es obligatorio.");
+      if (!isSupabaseConfigured) return;
+
+      const record = {
+        full_name: payload.full_name.trim(),
+        address: payload.address.trim() || null,
+        phone: payload.phone.trim() || null,
+        email: payload.email.trim() || null,
+        birth_date: payload.birth_date || null,
+        service_start_date: payload.service_start_date || null,
+        service_status: payload.service_status,
+        service_type: payload.service_type,
+        ministry_id: payload.ministry_id || null,
+        active: payload.active,
+      };
+
+      const request = payload.id
+        ? supabase.from("server_profiles").update(record).eq("id", payload.id)
+        : supabase.from("server_profiles").insert(record);
+      const { error } = await request;
+
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      setEditingProfile(null);
+      await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
+    },
+  });
+
+  const deleteProfile = useMutation({
+    mutationFn: async (profileId: string) => {
+      if (!isSupabaseConfigured) return;
+      const { error } = await supabase.from("server_profiles").delete().eq("id", profileId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      setDetailId(null);
+      await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
+    },
+  });
+
   const updateStatus = useMutation({
     mutationFn: async ({ id, service_status }: { id: string; service_status: DemoProfile["service_status"] }) => {
       if (!isSupabaseConfigured) return;
@@ -50,24 +136,115 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   });
 
   const addComment = useMutation({
-    mutationFn: async () => {
-      if (!selectedProfile || !comment.trim()) return;
+    mutationFn: async (profileId: string) => {
+      if (!comment.trim()) return;
       if (!isSupabaseConfigured) {
         setComment("");
         return;
       }
       const { error } = await supabase.from("comments").insert({
-        profile_id: selectedProfile.id,
+        profile_id: profileId,
         comment: comment.trim(),
       });
       if (error) throw error;
     },
     onSuccess: async () => {
       setComment("");
-      setSelectedProfile(null);
       await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
     },
   });
+
+  function openEditor(profile?: ProfileRecord) {
+    setEditingProfile(profile ? toFormState(profile) : emptyProfileForm);
+  }
+
+  function confirmDelete(profile: ProfileRecord) {
+    const confirmed = window.confirm(`Borrar el perfil de ${profile.full_name}?`);
+    if (confirmed) deleteProfile.mutate(profile.id);
+  }
+
+  if (detailProfile) {
+    return (
+      <div className="page-stack">
+        <section className="page-heading compact profile-detail-heading">
+          <div>
+            <p className="eyebrow">Ficha del servidor</p>
+            <h1>{detailProfile.full_name}</h1>
+            <p>{detailProfile.ministry} - {detailProfile.service_status}</p>
+          </div>
+          <div className="detail-actions">
+            {isAdmin && (
+              <>
+                <button className="btn btn-secondary" onClick={() => openEditor(detailProfile)} type="button">
+                  Editar
+                </button>
+                <button className="btn btn-danger" onClick={() => confirmDelete(detailProfile)} type="button">
+                  <Trash2 size={16} />
+                  Borrar
+                </button>
+              </>
+            )}
+            <button className="btn btn-primary" onClick={() => setDetailId(null)} type="button">
+              Volver
+            </button>
+          </div>
+        </section>
+
+        <section className="profile-detail-grid">
+          <article className="panel profile-info-panel">
+            <h2>Informacion</h2>
+            <Info label="Telefono" value={detailProfile.phone} />
+            <Info label="Email" value={detailProfile.email} />
+            <Info label="Direccion" value={detailProfile.address} />
+            <Info label="Cumpleanos" value={formatDate(detailProfile.birth_date)} />
+            <Info label="Inicio de servicio" value={formatDate(detailProfile.service_start_date)} />
+            <Info label="Tipo" value={detailProfile.service_type} />
+            <Info label="Estado" value={detailProfile.service_status} />
+          </article>
+
+          <article className="panel comments-panel">
+            <h2>Comentarios</h2>
+            <form
+              className="comment-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                addComment.mutate(detailProfile.id);
+              }}
+            >
+              <textarea value={comment} onChange={(event) => setComment(event.target.value)} rows={3} />
+              <button className="btn btn-primary" disabled={addComment.isPending} type="submit">
+                Guardar comentario
+              </button>
+            </form>
+            <div className="comment-history">
+              {detailProfile.comments?.length ? (
+                detailProfile.comments.map((item) => (
+                  <div className="comment-item" key={item.id}>
+                    <p>{item.comment}</p>
+                    <span>{item.author} - {formatDateTime(item.created_at)}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="helper-text">Sin comentarios.</p>
+              )}
+            </div>
+          </article>
+        </section>
+
+        {editingProfile && (
+          <ProfileEditor
+            error={profileMutation.error?.message}
+            form={editingProfile}
+            isSaving={profileMutation.isPending}
+            ministries={ministries}
+            onCancel={() => setEditingProfile(null)}
+            onChange={setEditingProfile}
+            onSubmit={(form) => profileMutation.mutate(form)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="page-stack">
@@ -77,6 +254,12 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
           <h1>Perfiles</h1>
           <p>Lista operativa de servidores y colaboradores.</p>
         </div>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => openEditor()} type="button">
+            <Plus size={18} />
+            Nuevo servidor
+          </button>
+        )}
       </section>
 
       <section className="panel filter-panel">
@@ -109,7 +292,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
         </label>
       </section>
 
-      <section className="panel table-panel">
+      <section className="panel table-panel desktop-profile-table">
         <div className="table-scroll">
           <table>
             <thead>
@@ -126,92 +309,245 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
             </thead>
             <tbody>
               {filteredProfiles.map((profile) => (
-                <tr key={profile.id}>
-                  <td>
-                    <strong>{profile.full_name}</strong>
-                    <span>{profile.address}</span>
-                  </td>
-                  <td>{profile.ministry}</td>
-                  <td>
-                    <span className={`status-pill status-${profile.service_status.toLowerCase()}`}>
-                      {profile.service_status}
-                    </span>
-                  </td>
-                  <td>{profile.service_type}</td>
-                  <td>{profile.phone}</td>
-                  <td>{profile.email}</td>
-                  <td className="comment-cell">
-                    <strong>{profile.last_comment || "Sin comentarios"}</strong>
-                    {profile.last_comment && (
-                      <span>
-                        {profile.last_comment_author || "Usuario"} - {formatDateTime(profile.last_comment_at)}
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="row-actions">
-                      <select
-                        value={profile.service_status}
-                        onChange={(event) =>
-                          updateStatus.mutate({
-                            id: profile.id,
-                            service_status: event.target.value as DemoProfile["service_status"],
-                          })
-                        }
-                      >
-                        <option>Activo</option>
-                        <option>Pausado</option>
-                        <option>Cancelado</option>
-                      </select>
-                      <button className="btn btn-secondary" onClick={() => setSelectedProfile(profile)} type="button">
-                        Comentar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                <ProfileRow
+                  isAdmin={isAdmin}
+                  key={profile.id}
+                  onDelete={confirmDelete}
+                  onEdit={openEditor}
+                  onOpen={setDetailId}
+                  onStatusChange={(service_status) => updateStatus.mutate({ id: profile.id, service_status })}
+                  profile={profile}
+                />
               ))}
             </tbody>
           </table>
         </div>
       </section>
 
-      {selectedProfile && (
-        <div className="modal-backdrop">
-          <form
-            className="modal-panel"
-            onSubmit={(event) => {
-              event.preventDefault();
-              addComment.mutate();
-            }}
-          >
-            <h2>{selectedProfile.full_name}</h2>
-            <p>
-              {selectedProfile.last_comment
-                ? `${selectedProfile.last_comment} - ${selectedProfile.last_comment_author || "Usuario"} - ${formatDateTime(selectedProfile.last_comment_at)}`
-                : "Sin comentarios previos."}
-            </p>
-            <label className="field">
-              <span>Nuevo comentario</span>
-              <textarea value={comment} onChange={(event) => setComment(event.target.value)} rows={4} />
-            </label>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setSelectedProfile(null)} type="button">
-                Cancelar
-              </button>
-              <button className="btn btn-primary" disabled={addComment.isPending} type="submit">
-                Guardar comentario
-              </button>
-            </div>
-          </form>
-        </div>
+      <section className="mobile-profile-list">
+        {filteredProfiles.map((profile) => (
+          <ProfileCard
+            isAdmin={isAdmin}
+            key={profile.id}
+            onDelete={confirmDelete}
+            onEdit={openEditor}
+            onOpen={setDetailId}
+            onStatusChange={(service_status) => updateStatus.mutate({ id: profile.id, service_status })}
+            profile={profile}
+          />
+        ))}
+      </section>
+
+      {editingProfile && (
+        <ProfileEditor
+          error={profileMutation.error?.message}
+          form={editingProfile}
+          isSaving={profileMutation.isPending}
+          ministries={ministries}
+          onCancel={() => setEditingProfile(null)}
+          onChange={setEditingProfile}
+          onSubmit={(form) => profileMutation.mutate(form)}
+        />
       )}
     </div>
   );
 }
 
-async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; profiles: DemoProfile[] }> {
+function ProfileRow({
+  isAdmin,
+  onDelete,
+  onEdit,
+  onOpen,
+  onStatusChange,
+  profile,
+}: {
+  isAdmin: boolean;
+  onDelete: (profile: ProfileRecord) => void;
+  onEdit: (profile: ProfileRecord) => void;
+  onOpen: (id: string) => void;
+  onStatusChange: (status: DemoProfile["service_status"]) => void;
+  profile: ProfileRecord;
+}) {
+  return (
+    <tr>
+      <td>
+        <button className="link-button" onClick={() => onOpen(profile.id)} type="button">
+          {profile.full_name}
+        </button>
+        <span>{profile.address}</span>
+      </td>
+      <td>{profile.ministry}</td>
+      <td>
+        <span className={`status-pill status-${profile.service_status.toLowerCase()}`}>{profile.service_status}</span>
+      </td>
+      <td>{profile.service_type}</td>
+      <td>{profile.phone}</td>
+      <td>{profile.email}</td>
+      <td className="comment-cell">
+        <strong>{profile.last_comment || "Sin comentarios"}</strong>
+        {profile.last_comment && (
+          <span>{profile.last_comment_author || "Usuario"} - {formatDateTime(profile.last_comment_at)}</span>
+        )}
+      </td>
+      <td>
+        <div className="row-actions">
+          <select value={profile.service_status} onChange={(event) => onStatusChange(event.target.value as DemoProfile["service_status"])}>
+            <option>Activo</option>
+            <option>Pausado</option>
+            <option>Cancelado</option>
+          </select>
+          {isAdmin && (
+            <>
+              <button className="btn btn-secondary" onClick={() => onEdit(profile)} type="button">Editar</button>
+              <button className="btn btn-danger icon-text" onClick={() => onDelete(profile)} type="button">
+                <Trash2 size={15} />
+              </button>
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function ProfileCard({
+  isAdmin,
+  onDelete,
+  onEdit,
+  onOpen,
+  onStatusChange,
+  profile,
+}: {
+  isAdmin: boolean;
+  onDelete: (profile: ProfileRecord) => void;
+  onEdit: (profile: ProfileRecord) => void;
+  onOpen: (id: string) => void;
+  onStatusChange: (status: DemoProfile["service_status"]) => void;
+  profile: ProfileRecord;
+}) {
+  return (
+    <article className="profile-card">
+      <button className="link-button profile-card-title" onClick={() => onOpen(profile.id)} type="button">
+        {profile.full_name}
+      </button>
+      <span className={`status-pill status-${profile.service_status.toLowerCase()}`}>{profile.service_status}</span>
+      <p>{profile.ministry} - {profile.service_type}</p>
+      <p>{profile.phone}</p>
+      <p>{profile.email}</p>
+      <div className="comment-cell">
+        <strong>{profile.last_comment || "Sin comentarios"}</strong>
+        {profile.last_comment && (
+          <span>{profile.last_comment_author || "Usuario"} - {formatDateTime(profile.last_comment_at)}</span>
+        )}
+      </div>
+      <div className="row-actions">
+        <select value={profile.service_status} onChange={(event) => onStatusChange(event.target.value as DemoProfile["service_status"])}>
+          <option>Activo</option>
+          <option>Pausado</option>
+          <option>Cancelado</option>
+        </select>
+        {isAdmin && (
+          <>
+            <button className="btn btn-secondary" onClick={() => onEdit(profile)} type="button">Editar</button>
+            <button className="btn btn-danger" onClick={() => onDelete(profile)} type="button">Borrar</button>
+          </>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function ProfileEditor({
+  error,
+  form,
+  isSaving,
+  ministries,
+  onCancel,
+  onChange,
+  onSubmit,
+}: {
+  error?: string;
+  form: ProfileFormState;
+  isSaving: boolean;
+  ministries: DemoMinistry[];
+  onCancel: () => void;
+  onChange: (form: ProfileFormState) => void;
+  onSubmit: (form: ProfileFormState) => void;
+}) {
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSubmit(form);
+  }
+
+  return (
+    <div className="modal-backdrop">
+      <form className="modal-panel profile-editor" onSubmit={submit}>
+        <h2>{form.id ? "Editar servidor" : "Nuevo servidor"}</h2>
+        <div className="profile-editor-grid">
+          <Field label="Nombre completo" value={form.full_name} onChange={(value) => onChange({ ...form, full_name: value })} />
+          <Field label="Telefono" value={form.phone} onChange={(value) => onChange({ ...form, phone: value })} />
+          <Field label="Email" type="email" value={form.email} onChange={(value) => onChange({ ...form, email: value })} />
+          <Field label="Direccion" value={form.address} onChange={(value) => onChange({ ...form, address: value })} />
+          <Field label="Cumpleanos" type="date" value={form.birth_date} onChange={(value) => onChange({ ...form, birth_date: value })} />
+          <Field label="Inicio de servicio" type="date" value={form.service_start_date} onChange={(value) => onChange({ ...form, service_start_date: value })} />
+          <label className="field">
+            <span>Ministerio</span>
+            <select value={form.ministry_id} onChange={(event) => onChange({ ...form, ministry_id: event.target.value })}>
+              <option value="">Sin ministerio</option>
+              {ministries.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Estado</span>
+            <select value={form.service_status} onChange={(event) => onChange({ ...form, service_status: event.target.value as DemoProfile["service_status"] })}>
+              <option>Activo</option>
+              <option>Pausado</option>
+              <option>Cancelado</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Tipo</span>
+            <select value={form.service_type} onChange={(event) => onChange({ ...form, service_type: event.target.value as DemoProfile["service_type"] })}>
+              <option>Ministerial</option>
+              <option>Administrativo</option>
+            </select>
+          </label>
+          <label className="field checkbox-field">
+            <input checked={form.active} onChange={(event) => onChange({ ...form, active: event.target.checked })} type="checkbox" />
+            <span>Perfil activo</span>
+          </label>
+        </div>
+        {error && <div className="alert error">{error}</div>}
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onCancel} type="button">Cancelar</button>
+          <button className="btn btn-primary" disabled={isSaving} type="submit">{isSaving ? "Guardando..." : "Guardar"}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function Field({ label, onChange, type = "text", value }: { label: string; onChange: (value: string) => void; type?: string; value: string }) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="info-row">
+      <span>{label}</span>
+      <strong>{value || "No registrado"}</strong>
+    </div>
+  );
+}
+
+async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; profiles: ProfileRecord[] }> {
   if (!isSupabaseConfigured) {
-    return { ministries: demoMinistries, profiles: demoProfiles };
+    return { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[] };
   }
 
   const [
@@ -222,47 +558,76 @@ async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; pr
     supabase.from("ministries").select("id, name, description, active").order("name"),
     supabase
       .from("server_profiles")
-      .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, active, ministries(name), comments(comment, created_at, user_id)")
+      .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, ministry_id, active, ministries(name), comments(id, comment, created_at, user_id)")
       .order("full_name"),
     supabase.from("users").select("id, full_name, email"),
   ]);
 
   if (ministriesError || profilesError || usersError) {
-    return { ministries: demoMinistries, profiles: demoProfiles };
+    return { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[] };
   }
   const userById = new Map((usersData ?? []).map((user: any) => [user.id, user.full_name || user.email || "Usuario"]));
 
   return {
     ministries: (ministriesData ?? []) as DemoMinistry[],
-    profiles: (profilesData ?? []).map((profile: any) => ({
-      id: profile.id,
-      full_name: profile.full_name,
-      address: profile.address ?? "",
-      phone: profile.phone ?? "",
-      email: profile.email ?? "",
-      birth_date: profile.birth_date ?? "",
-      service_start_date: profile.service_start_date ?? "",
-      service_status: profile.service_status,
-      service_type: profile.service_type,
-      ministry: profile.ministries?.name ?? "Sin ministerio",
-      active: profile.active,
-      ...latestComment(profile.comments, userById),
-    })),
+    profiles: (profilesData ?? []).map((profile: any) => {
+      const comments = mapComments(profile.comments, userById);
+      return {
+        id: profile.id,
+        full_name: profile.full_name,
+        address: profile.address ?? "",
+        phone: profile.phone ?? "",
+        email: profile.email ?? "",
+        birth_date: profile.birth_date ?? "",
+        service_start_date: profile.service_start_date ?? "",
+        service_status: profile.service_status,
+        service_type: profile.service_type,
+        ministry: profile.ministries?.name ?? "Sin ministerio",
+        ministry_id: profile.ministry_id,
+        active: profile.active,
+        comments,
+        last_comment: comments[0]?.comment ?? "",
+        last_comment_author: comments[0]?.author ?? "",
+        last_comment_at: comments[0]?.created_at ?? "",
+      };
+    }),
   };
 }
 
-function latestComment(
-  comments: { comment: string; created_at: string; user_id: string | null }[] | null | undefined,
+function mapComments(
+  comments: { id: string; comment: string; created_at: string; user_id: string | null }[] | null | undefined,
   userById: Map<string, string>,
 ) {
-  if (!comments?.length) return {};
-  const latest = [...comments].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  if (!comments?.length) return [];
+  return [...comments]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map((item) => ({
+      id: item.id,
+      comment: item.comment,
+      created_at: item.created_at,
+      author: item.user_id ? userById.get(item.user_id) ?? "Usuario" : "Sistema",
+    }));
+}
 
+function toFormState(profile: ProfileRecord): ProfileFormState {
   return {
-    last_comment: latest?.comment ?? "",
-    last_comment_author: latest?.user_id ? userById.get(latest.user_id) ?? "Usuario" : "Sistema",
-    last_comment_at: latest?.created_at ?? "",
+    id: profile.id,
+    full_name: profile.full_name,
+    address: profile.address,
+    phone: profile.phone,
+    email: profile.email,
+    birth_date: profile.birth_date,
+    service_start_date: profile.service_start_date,
+    service_status: profile.service_status,
+    service_type: profile.service_type,
+    ministry_id: profile.ministry_id ?? "",
+    active: profile.active,
   };
+}
+
+function formatDate(value: string) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("es-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00`));
 }
 
 function formatDateTime(value: string | undefined) {
