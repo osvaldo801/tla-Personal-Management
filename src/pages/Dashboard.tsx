@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
-import { Activity, Cake, CircleDollarSign, Clock, Search } from "lucide-react";
+import { Activity, Cake, Clock, Search, UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { demoMinistries, demoProfiles, type DemoMinistry, type DemoProfile } from "../data/demoData";
+import { demoMinistries, demoProfiles, demoStatusOptions, type DemoMinistry, type DemoProfile, type DemoStatusOption } from "../data/demoData";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useOrganizationSettings } from "../providers/OrganizationProvider";
 
@@ -12,11 +12,12 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
   const { data } = useQuery({
     queryKey: ["dashboard-data"],
     queryFn: fetchDashboardData,
-    initialData: { ministries: demoMinistries, profiles: demoProfiles },
+    initialData: { ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions },
   });
 
   const profiles = data.profiles;
   const ministries = data.ministries;
+  const statuses = data.statuses;
   const total = profiles.length || 1;
   const active = profiles.filter((profile) => profile.service_status === "Activo").length;
   const paused = profiles.filter((profile) => profile.service_status === "Pausado").length;
@@ -59,7 +60,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
 
         <section className="dashboard-quick-row">
           <article className="analytics-card quick-search-card">
-            <h2>Buscar Perfil</h2>
+            <h2>BUSCAR SERVIDOR</h2>
             <label className="search-field">
               <Search size={18} />
               <input
@@ -79,7 +80,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
           </article>
 
           <article className="analytics-card birthdays-card">
-            <h2>Cumpleanos</h2>
+            <h2>Cumpleaños</h2>
             <BirthdayList title="Este mes" profiles={birthdayGroups.current} />
             <BirthdayList title="Mes siguiente" profiles={birthdayGroups.next} />
           </article>
@@ -87,7 +88,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
 
         <div className="analytics-grid">
           <article className="analytics-card ministry-map">
-            <h2>Servidores por Ministerio</h2>
+            <h2>SERVIDORES POR MINISTERIO</h2>
             <div className="treemap">
               {ministryCounts.map((item, index) => (
                 <div className={`tree-cell tree-${index + 1}`} key={item.name}>
@@ -99,7 +100,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
           </article>
 
           <article className="analytics-card designation-card">
-            <h2>Tipo de Servicio</h2>
+            <h2>TIPO DE SERVICIO</h2>
             <div className="bar-list">
               <MetricBar label="Ministerial" value={ministerial} total={total} />
               <MetricBar label="Administrativo" value={administrative} total={total} />
@@ -125,7 +126,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
           </article>
 
           <article className="analytics-card dark-card wide-card">
-            <h2>Estado de Servicio</h2>
+            <h2>ESTATUS DE SERVICIO</h2>
             <div className="dark-bars">
               <MetricBar label="Activo" value={active} total={total} />
               <MetricBar label="Pausado" value={paused} total={total} />
@@ -134,7 +135,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
           </article>
 
           <article className="analytics-card expense-card">
-            <h2>Carga por Ministerio</h2>
+            <h2>CARGA POR MINISTERIO</h2>
             <div className="expense-list">
               {ministryCounts.map((item) => (
                 <div className="expense-row" key={item.name}>
@@ -149,7 +150,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
           </article>
 
           <article className="analytics-card gauge-card">
-            <h2>Participacion Ministerial</h2>
+            <h2>PARTICIPACION MINISTERIAL</h2>
             <div className="gauge">
               <div className="gauge-arc" style={{ "--value": `${ministerialPercent}%` } as CSSProperties} />
               <strong>{ministerialPercent}%</strong>
@@ -163,7 +164,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
           </article>
 
           <article className="analytics-card kpi-card">
-            <CircleDollarSign size={28} />
+            <UserPlus size={28} />
             <span>Nuevos este mes</span>
             <strong>2</strong>
           </article>
@@ -183,10 +184,10 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
       </section>
 
       <aside className="analytics-filters">
-        <FilterBox title="Status" items={["Activo", "Pausado", "Cancelado"]} />
-        <FilterBox title="Ministerio" items={ministries.map((item) => item.name)} />
-        <FilterBox title="Tipo" items={["Ministerial", "Administrativo"]} />
-        <FilterBox title="Ano" items={["2024", "2023", "2022", "2021"]} />
+        <FilterBox title="ESTATUS" items={statuses.map((item) => item.name)} />
+        <FilterBox title="MINISTERIO" items={ministries.map((item) => item.name)} />
+        <FilterBox title="TIPO" items={["Ministerial", "Administrativo"]} />
+        <FilterBox title="Año" items={["2026", "2025", "2024", "2023"]} />
       </aside>
     </div>
   );
@@ -200,7 +201,7 @@ function BirthdayList({ title, profiles }: { title: string; profiles: DemoProfil
         {title}
       </h3>
       {profiles.length === 0 ? (
-        <p>Sin cumpleanos registrados.</p>
+        <p>Sin cumpleaños registrados.</p>
       ) : (
         profiles.map((profile) => (
           <div key={profile.id}>
@@ -241,23 +242,29 @@ function formatBirthday(date: string) {
   return new Intl.DateTimeFormat("es-US", { month: "long", day: "numeric" }).format(parsed);
 }
 
-async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profiles: DemoProfile[] }> {
+async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profiles: DemoProfile[]; statuses: DemoStatusOption[] }> {
   if (!isSupabaseConfigured) {
-    return { ministries: demoMinistries, profiles: demoProfiles };
+    return { ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions };
   }
 
-  const [{ data: ministriesData, error: ministriesError }, { data: profilesData, error: profilesError }] =
+  const [
+    { data: ministriesData, error: ministriesError },
+    { data: profilesData, error: profilesError },
+    { data: statusesData, error: statusesError },
+  ] =
     await Promise.all([
       supabase.from("ministries").select("id, name, description, active").order("name"),
       supabase.from("server_profiles").select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, active, ministries(name), comments(comment, created_at)").order("full_name"),
+      supabase.from("service_status_options").select("id, name, active").eq("active", true).order("name"),
     ]);
 
-  if (ministriesError || profilesError) {
-    return { ministries: demoMinistries, profiles: demoProfiles };
+  if (ministriesError || profilesError || statusesError) {
+    return { ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions };
   }
 
   return {
     ministries: (ministriesData ?? []) as DemoMinistry[],
+    statuses: (statusesData ?? demoStatusOptions) as DemoStatusOption[],
     profiles: (profilesData ?? []).map((profile: any) => ({
       id: profile.id,
       full_name: profile.full_name,
