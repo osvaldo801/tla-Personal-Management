@@ -1,20 +1,22 @@
-import { Building2, LayoutDashboard, LogOut, Menu, Settings, Users, X } from "lucide-react";
+import { Building2, LayoutDashboard, LogOut, Settings, ShieldCheck, Menu, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { MinistriesPage } from "./pages/MinistriesPage";
 import { OrganizationSettingsPage } from "./pages/OrganizationSettingsPage";
 import { ProfilesPage } from "./pages/ProfilesPage";
+import { UsersPage } from "./pages/UsersPage";
 import { useAuth } from "./providers/AuthProvider";
 import { useOrganizationSettings } from "./providers/OrganizationProvider";
 
-type View = "dashboard" | "profiles" | "ministries" | "organization-settings";
+type View = "dashboard" | "profiles" | "ministries" | "users" | "organization-settings";
 
 export function App() {
   const { session, profile, isAdmin, isLoading, signOut } = useAuth();
   const { settings } = useOrganizationSettings();
   const [view, setView] = useState<View>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileQuery, setProfileQuery] = useState("");
 
   if (isLoading) {
     return <div className="screen-center">Cargando...</div>;
@@ -41,6 +43,7 @@ export function App() {
     { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard, visible: true },
     { id: "profiles" as const, label: "Perfiles", icon: Users, visible: true },
     { id: "ministries" as const, label: "Ministerios", icon: Building2, visible: isAdmin },
+    { id: "users" as const, label: "Usuarios y Roles", icon: ShieldCheck, visible: isAdmin },
     { id: "organization-settings" as const, label: "Configuracion de Organizacion", icon: Settings, visible: isAdmin },
   ];
 
@@ -84,6 +87,7 @@ export function App() {
             <Users size={16} />
             <span>{profile.full_name || profile.email}</span>
           </div>
+          <div className="version-label">Version 0.2.0</div>
           <button className="nav-item" onClick={signOut}>
             <LogOut size={18} />
             <span>Cerrar sesion</span>
@@ -107,9 +111,17 @@ export function App() {
         </header>
 
         <main className="content">
-          {view === "dashboard" && <Dashboard />}
-          {view === "profiles" && <ProfilesPage />}
+          {view === "dashboard" && (
+            <Dashboard
+              onOpenProfile={(search) => {
+                setProfileQuery(search);
+                setView("profiles");
+              }}
+            />
+          )}
+          {view === "profiles" && <ProfilesPage initialQuery={profileQuery} />}
           {view === "ministries" && isAdmin && <MinistriesPage />}
+          {view === "users" && isAdmin && <UsersPage />}
           {view === "organization-settings" && isAdmin && <OrganizationSettingsPage />}
         </main>
       </div>
