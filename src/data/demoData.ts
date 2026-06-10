@@ -13,7 +13,7 @@ export type DemoProfile = {
   email: string;
   birth_date: string;
   service_start_date: string;
-  service_status: "Activo" | "Pausado" | "Cancelado";
+  service_status: string;
   service_type: "Administrativo" | "Ministerial";
   ministry: string;
   active: boolean;
@@ -28,6 +28,18 @@ export const demoMinistries: DemoMinistry[] = [
   { id: "acomodacion", name: "Acomodacion", description: "Recepcion y apoyo en asientos.", active: true },
   { id: "alabanza", name: "Alabanza", description: "Equipo musical y vocal.", active: true },
   { id: "media", name: "Media", description: "Audio, video y transmision.", active: true },
+];
+
+export type DemoStatusOption = {
+  id: string;
+  name: string;
+  active: boolean;
+};
+
+export const demoStatusOptions: DemoStatusOption[] = [
+  { id: "activo", name: "Activo", active: true },
+  { id: "pausado", name: "Pausado", active: true },
+  { id: "cancelado", name: "Cancelado", active: true },
 ];
 
 export const demoProfiles: DemoProfile[] = [
