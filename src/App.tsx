@@ -10,6 +10,36 @@ import { useAuth } from "./providers/AuthProvider";
 import { useOrganizationSettings } from "./providers/OrganizationProvider";
 
 type View = "dashboard" | "profiles" | "ministries" | "users" | "organization-settings";
+type Language = "es" | "en";
+
+const labels = {
+  es: {
+    admin: "Administrador",
+    dashboard: "Dashboard",
+    ministryLeader: "Lider de Ministerio",
+    ministries: "Ministerios",
+    organizationSettings: "Configuracion de Organizacion",
+    panel: "Panel administrativo",
+    pendingAccess: "Acceso pendiente",
+    pendingAccessText: "Tu cuenta existe en Google, pero todavia no tiene permisos administrativos en este sistema.",
+    profiles: "Servidores",
+    signOut: "Cerrar sesion",
+    users: "Usuarios y Roles",
+  },
+  en: {
+    admin: "Administrator",
+    dashboard: "Dashboard",
+    ministryLeader: "Ministry Leader",
+    ministries: "Ministries",
+    organizationSettings: "Organization Settings",
+    panel: "Administrative panel",
+    pendingAccess: "Access pending",
+    pendingAccessText: "Your Google account exists, but it does not have administrative permissions in this system yet.",
+    profiles: "Servers",
+    signOut: "Sign out",
+    users: "Users and Roles",
+  },
+};
 
 export function App() {
   const { session, profile, isAdmin, isLoading, signOut } = useAuth();
@@ -17,6 +47,8 @@ export function App() {
   const [view, setView] = useState<View>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileQuery, setProfileQuery] = useState("");
+  const [language, setLanguage] = useState<Language>("es");
+  const t = labels[language];
 
   if (isLoading) {
     return <div className="screen-center">Cargando...</div>;
@@ -30,21 +62,21 @@ export function App() {
     return (
       <div className="screen-center access-card">
         <img src={settings.logo_url} alt={settings.organization_name} className="access-logo" />
-        <h1>Acceso pendiente</h1>
-        <p>Tu cuenta existe en Google, pero todavia no tiene permisos administrativos en este sistema.</p>
+        <h1>{t.pendingAccess}</h1>
+        <p>{t.pendingAccessText}</p>
         <button className="btn btn-secondary" onClick={signOut}>
-          Cerrar sesion
+          {t.signOut}
         </button>
       </div>
     );
   }
 
   const nav = [
-    { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard, visible: true },
-    { id: "profiles" as const, label: "Servidores", icon: Users, visible: true },
-    { id: "ministries" as const, label: "Ministerios", icon: Building2, visible: isAdmin },
-    { id: "users" as const, label: "Usuarios y Roles", icon: ShieldCheck, visible: isAdmin },
-    { id: "organization-settings" as const, label: "Configuracion de Organizacion", icon: Settings, visible: isAdmin },
+    { id: "dashboard" as const, label: t.dashboard, icon: LayoutDashboard, visible: true },
+    { id: "profiles" as const, label: t.profiles, icon: Users, visible: true },
+    { id: "ministries" as const, label: t.ministries, icon: Building2, visible: isAdmin },
+    { id: "users" as const, label: t.users, icon: ShieldCheck, visible: isAdmin },
+    { id: "organization-settings" as const, label: t.organizationSettings, icon: Settings, visible: isAdmin },
   ];
 
   return (
@@ -54,7 +86,7 @@ export function App() {
           <img src={settings.logo_url} alt={settings.organization_name} className="brand-logo" />
           <div>
             <p className="brand-name">{settings.organization_name}</p>
-            <p className="brand-meta">Panel administrativo</p>
+            <p className="brand-meta">{t.panel}</p>
           </div>
           <button className="icon-button mobile-only" onClick={() => setSidebarOpen(false)} aria-label="Cerrar menu">
             <X size={20} />
@@ -87,10 +119,10 @@ export function App() {
             <Users size={16} />
             <span>{profile.full_name || profile.email}</span>
           </div>
-          <div className="version-label">Version 0.3.3</div>
+          <div className="version-label">Version 0.3.4</div>
           <button className="nav-item" onClick={signOut}>
             <LogOut size={18} />
-            <span>Cerrar sesion</span>
+            <span>{t.signOut}</span>
           </button>
         </div>
       </aside>
@@ -107,7 +139,13 @@ export function App() {
               <span>{settings.phone}</span>
             </div>
           </div>
-          <div className="role-badge">{isAdmin ? "Administrador" : "Lider de Ministerio"}</div>
+          <div className="topbar-actions">
+            <div className="language-toggle" aria-label="Idioma">
+              <button className={language === "es" ? "active" : ""} onClick={() => setLanguage("es")} type="button">ES</button>
+              <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")} type="button">EN</button>
+            </div>
+            <div className="role-badge">{isAdmin ? t.admin : t.ministryLeader}</div>
+          </div>
         </header>
 
         <main className="content">
