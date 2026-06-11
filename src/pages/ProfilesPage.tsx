@@ -12,8 +12,19 @@ type ProfileComment = {
   author: string;
 };
 
+type DepartmentRecord = {
+  id: string;
+  ministry_id: string;
+  ministry_name: string;
+  name: string;
+  active: boolean;
+};
+
 type ProfileRecord = DemoProfile & {
   ministry_id?: string | null;
+  ministry_ids?: string[];
+  department_ids?: string[];
+  departments?: string;
   comments?: ProfileComment[];
   baptism_status?: string;
   profession_year?: string;
@@ -38,6 +49,8 @@ type ProfileFormState = {
   service_status: string;
   service_type: DemoProfile["service_type"];
   ministry_id: string;
+  ministry_ids: string[];
+  department_ids: string[];
   active: boolean;
 };
 
@@ -51,6 +64,8 @@ const emptyProfileForm: ProfileFormState = {
   service_status: "Activo",
   service_type: "Ministerial",
   ministry_id: "",
+  ministry_ids: [],
+  department_ids: [],
   active: true,
 };
 
@@ -67,11 +82,12 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   const { data } = useQuery({
     queryKey: ["profiles-page-data"],
     queryFn: fetchProfilesPageData,
-    initialData: { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions },
+    initialData: { departments: [] as DepartmentRecord[], ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions },
   });
 
   const profiles = data.profiles;
   const ministries = data.ministries;
+  const departments = data.departments;
   const statuses = data.statuses;
   const detailProfile = detailId ? profiles.find((profile) => profile.id === detailId) ?? null : null;
 
@@ -83,12 +99,16 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
     const normalizedQuery = query.trim().toLowerCase();
 
     return profiles.filter((profile) => {
+      const searchableMinistries = profile.ministry.toLowerCase();
+      const searchableDepartments = (profile.departments ?? "").toLowerCase();
       const matchesQuery =
         normalizedQuery.length === 0 ||
         profile.full_name.toLowerCase().includes(normalizedQuery) ||
         profile.email.toLowerCase().includes(normalizedQuery) ||
-        profile.phone.includes(normalizedQuery);
-      const matchesMinistry = ministry === "Todos" || profile.ministry === ministry;
+        profile.phone.includes(normalizedQuery) ||
+        searchableMinistries.includes(normalizedQuery) ||
+        searchableDepartments.includes(normalizedQuery);
+      const matchesMinistry = ministry === "Todos" || profile.ministry.split(", ").includes(ministry);
       const matchesStatus = status === "Todos" || profile.service_status === status;
 
       return matchesQuery && matchesMinistry && matchesStatus;
@@ -100,6 +120,10 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
       if (!payload.full_name.trim()) throw new Error("El nombre es obligatorio.");
       if (!isSupabaseConfigured) return;
 
+      const selectedDepartmentIds = payload.department_ids.filter((departmentId) =>
+        departments.some((department) => department.id === departmentId && payload.ministry_ids.includes(department.ministry_id)),
+      );
+      const primaryMinistryId = payload.ministry_ids[0] ?? payload.ministry_id || null;
       const record = {
         full_name: payload.full_name.trim(),
         address: payload.address.trim() || null,
@@ -109,16 +133,22 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
         service_start_date: payload.service_start_date || null,
         service_status: payload.service_status,
         service_type: payload.service_type,
-        ministry_id: payload.ministry_id || null,
+        ministry_id: primaryMinistryId,
         active: payload.active,
       };
 
-      const request = payload.id
-        ? supabase.from("server_profiles").update(record).eq("id", payload.id)
-        : supabase.from("server_profiles").insert(record);
-      const { error } = await request;
+      let profileId = payload.id;
+      if (profileId) {
+        const { error } = await supabase.from("server_profiles").update(record).eq("id", profileId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from("server_profiles").insert(record).select("id").single();
+        if (error) throw error;
+        profileId = data.id;
+      }
 
-      if (error) throw error;
+      if (!profileId) throw new Error("No se pudo guardar el servidor.");
+      await replaceProfileAssignments(profileId, payload.ministry_ids, selectedDepartmentIds);
     },
     onSuccess: async () => {
       setEditingProfile(null);
@@ -212,6 +242,8 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
             <Info label="Inicio de servicio" value={formatDate(detailProfile.service_start_date)} />
             <Info label="Tipo" value={detailProfile.service_type} />
             <Info label="Estado" value={detailProfile.service_status} />
+            <Info label="Ministerios" value={detailProfile.ministry} />
+            <Info label="Departamentos" value={detailProfile.departments ?? ""} />
             <Info label="Estado civil" value={detailProfile.marital_status ?? ""} />
             <Info label="Contacto de emergencia" value={formatEmergencyContact(detailProfile)} />
             <Info label="Bautizado" value={detailProfile.baptism_status ?? ""} />
@@ -254,6 +286,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
 
         {editingProfile && (
           <ProfileEditor
+            departments={departments}
             error={profileMutation.error?.message}
             form={editingProfile}
             isSaving={profileMutation.isPending}
@@ -290,7 +323,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por nombre, email o teléfono"
+            placeholder="Buscar por nombre, email, teléfono, ministerio o departamento"
           />
         </label>
 
@@ -321,6 +354,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
               <tr>
                 <th>Nombre</th>
                 <th>Ministerio</th>
+                <th>Departamento</th>
                 <th>Estado</th>
                 <th>Tipo</th>
                 <th>Teléfono</th>
@@ -364,6 +398,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
 
       {editingProfile && (
         <ProfileEditor
+          departments={departments}
           error={profileMutation.error?.message}
           form={editingProfile}
           isSaving={profileMutation.isPending}
@@ -404,6 +439,7 @@ function ProfileRow({
         <span>{profile.address}</span>
       </td>
       <td>{profile.ministry}</td>
+      <td>{profile.departments || "Sin departamento"}</td>
       <td>
         <span className={`status-pill status-${profile.service_status.toLowerCase()}`}>{profile.service_status}</span>
       </td>
@@ -459,6 +495,7 @@ function ProfileCard({
       </button>
       <span className={`status-pill status-${profile.service_status.toLowerCase()}`}>{profile.service_status}</span>
       <p>{profile.ministry} - {profile.service_type}</p>
+      <p>{profile.departments || "Sin departamento"}</p>
       <p>{profile.phone}</p>
       <p>{profile.email}</p>
       <div className="comment-cell">
@@ -483,6 +520,7 @@ function ProfileCard({
 }
 
 function ProfileEditor({
+  departments,
   error,
   form,
   isSaving,
@@ -492,6 +530,7 @@ function ProfileEditor({
   onSubmit,
   statuses,
 }: {
+  departments: DepartmentRecord[];
   error?: string;
   form: ProfileFormState;
   isSaving: boolean;
@@ -506,6 +545,8 @@ function ProfileEditor({
     onSubmit(form);
   }
 
+  const selectedDepartments = departments.filter((department) => form.ministry_ids.includes(department.ministry_id));
+
   return (
     <div className="modal-backdrop">
       <form className="modal-panel profile-editor" onSubmit={submit}>
@@ -518,11 +559,38 @@ function ProfileEditor({
           <Field label="Cumpleaños" type="date" value={form.birth_date} onChange={(value) => onChange({ ...form, birth_date: value })} />
           <Field label="Inicio de servicio" type="date" value={form.service_start_date} onChange={(value) => onChange({ ...form, service_start_date: value })} />
           <label className="field">
-            <span>Ministerio</span>
-            <select value={form.ministry_id} onChange={(event) => onChange({ ...form, ministry_id: event.target.value })}>
-              <option value="">Sin ministerio</option>
-              {ministries.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
+            <span>Ministerios</span>
+            <div className="check-list">
+              {ministries.map((item) => (
+                <label key={item.id}>
+                  <input
+                    checked={form.ministry_ids.includes(item.id)}
+                    onChange={() => onChange(toggleMinistry(form, item.id, departments))}
+                    type="checkbox"
+                  />
+                  <span>{item.name}</span>
+                </label>
+              ))}
+            </div>
+          </label>
+          <label className="field">
+            <span>Departamentos</span>
+            <div className="check-list">
+              {selectedDepartments.length === 0 ? (
+                <small>Selecciona un ministerio.</small>
+              ) : (
+                selectedDepartments.map((item) => (
+                  <label key={item.id}>
+                    <input
+                      checked={form.department_ids.includes(item.id)}
+                      onChange={() => onChange(toggleDepartment(form, item.id))}
+                      type="checkbox"
+                    />
+                    <span>{item.ministry_name} - {item.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
           </label>
           <label className="field">
             <span>Estado</span>
@@ -570,36 +638,87 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; profiles: ProfileRecord[]; statuses: DemoStatusOption[] }> {
+async function replaceProfileAssignments(profileId: string, ministryIds: string[], departmentIds: string[]) {
+  await supabase.from("server_profile_departments").delete().eq("profile_id", profileId);
+  await supabase.from("server_profile_ministries").delete().eq("profile_id", profileId);
+
+  if (ministryIds.length) {
+    const { error } = await supabase.from("server_profile_ministries").insert(
+      ministryIds.map((ministry_id) => ({ profile_id: profileId, ministry_id })),
+    );
+    if (error) throw error;
+  }
+
+  if (departmentIds.length) {
+    const { error } = await supabase.from("server_profile_departments").insert(
+      departmentIds.map((department_id) => ({ profile_id: profileId, department_id })),
+    );
+    if (error) throw error;
+  }
+}
+
+async function fetchProfilesPageData(): Promise<{ departments: DepartmentRecord[]; ministries: DemoMinistry[]; profiles: ProfileRecord[]; statuses: DemoStatusOption[] }> {
   if (!isSupabaseConfigured) {
-    return { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions };
+    return { departments: [], ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions };
   }
 
   const [
     { data: ministriesData, error: ministriesError },
+    { data: departmentsData, error: departmentsError },
     { data: profilesData, error: profilesError },
+    { data: profileMinistriesData, error: profileMinistriesError },
+    { data: profileDepartmentsData, error: profileDepartmentsError },
     { data: usersData, error: usersError },
     { data: statusesData, error: statusesError },
   ] = await Promise.all([
     supabase.from("ministries").select("id, name, description, active").order("name"),
+    supabase.from("ministry_departments").select("id, ministry_id, name, active, ministries(name)").eq("active", true).order("name"),
     supabase
       .from("server_profiles")
       .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, ministry_id, active, marital_status, emergency_contact_name, emergency_contact_phone, baptism_status, profession_year, membership_since_year, membership_classes, service_availability, skills_talents, service_ministries, ministries(name), comments(id, comment, created_at, user_id)")
       .order("full_name"),
+    supabase.from("server_profile_ministries").select("profile_id, ministry_id, ministries(name)"),
+    supabase.from("server_profile_departments").select("profile_id, department_id, ministry_departments(name, ministry_id, ministries(name))"),
     supabase.from("users").select("id, full_name, email"),
     supabase.from("service_status_options").select("id, name, active").eq("active", true).order("name"),
   ]);
 
-  if (ministriesError || profilesError || usersError || statusesError) {
-    return { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions };
+  if (ministriesError || departmentsError || profilesError || profileMinistriesError || profileDepartmentsError || usersError || statusesError) {
+    return { departments: [], ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions };
   }
+
+  const departments = (departmentsData ?? []).map((department: any) => ({
+    id: department.id,
+    ministry_id: department.ministry_id,
+    ministry_name: department.ministries?.name ?? "Sin ministerio",
+    name: department.name,
+    active: department.active,
+  }));
   const userById = new Map((usersData ?? []).map((user: any) => [user.id, user.full_name || user.email || "Usuario"]));
+  const ministriesByProfile = groupByProfile(profileMinistriesData ?? []);
+  const departmentsByProfile = groupByProfile(profileDepartmentsData ?? []);
 
   return {
+    departments,
     ministries: (ministriesData ?? []) as DemoMinistry[],
     statuses: (statusesData ?? demoStatusOptions) as DemoStatusOption[],
     profiles: (profilesData ?? []).map((profile: any) => {
       const comments = mapComments(profile.comments, userById);
+      const profileMinistries = ministriesByProfile.get(profile.id) ?? [];
+      const profileDepartments = departmentsByProfile.get(profile.id) ?? [];
+      const ministryIds = profileMinistries.length
+        ? profileMinistries.map((item: any) => item.ministry_id)
+        : [profile.ministry_id].filter(Boolean);
+      const ministryNames = profileMinistries.length
+        ? profileMinistries.map((item: any) => item.ministries?.name)
+        : [profile.ministries?.name ?? "Sin ministerio"];
+      const departmentIds = profileDepartments.map((item: any) => item.department_id).filter(Boolean);
+      const departmentNames = profileDepartments.map((item: any) => {
+        const department = item.ministry_departments;
+        const ministryName = department?.ministries?.name;
+        return department?.name ? `${ministryName ? `${ministryName} - ` : ""}${department.name}` : "";
+      });
+
       return {
         id: profile.id,
         full_name: profile.full_name,
@@ -610,8 +729,11 @@ async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; pr
         service_start_date: profile.service_start_date ?? "",
         service_status: profile.service_status,
         service_type: profile.service_type,
-        ministry: profile.ministries?.name ?? "Sin ministerio",
+        ministry: uniqueNames(ministryNames).join(", ") || "Sin ministerio",
         ministry_id: profile.ministry_id,
+        ministry_ids: ministryIds,
+        department_ids: departmentIds,
+        departments: uniqueNames(departmentNames).join(", "),
         active: profile.active,
         marital_status: profile.marital_status ?? "",
         emergency_contact_name: profile.emergency_contact_name ?? "",
@@ -630,6 +752,16 @@ async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; pr
       };
     }),
   };
+}
+
+function groupByProfile(rows: any[]) {
+  const grouped = new Map<string, any[]>();
+  rows.forEach((row) => {
+    const current = grouped.get(row.profile_id) ?? [];
+    current.push(row);
+    grouped.set(row.profile_id, current);
+  });
+  return grouped;
 }
 
 function mapComments(
@@ -659,8 +791,33 @@ function toFormState(profile: ProfileRecord): ProfileFormState {
     service_status: profile.service_status,
     service_type: profile.service_type,
     ministry_id: profile.ministry_id ?? "",
+    ministry_ids: profile.ministry_ids?.length ? profile.ministry_ids : [profile.ministry_id ?? ""].filter(Boolean),
+    department_ids: profile.department_ids ?? [],
     active: profile.active,
   };
+}
+
+function toggleMinistry(form: ProfileFormState, ministryId: string, departments: DepartmentRecord[]) {
+  const nextMinistryIds = form.ministry_ids.includes(ministryId)
+    ? form.ministry_ids.filter((id) => id !== ministryId)
+    : [...form.ministry_ids, ministryId];
+  const nextDepartmentIds = form.department_ids.filter((departmentId) =>
+    departments.some((department) => department.id === departmentId && nextMinistryIds.includes(department.ministry_id)),
+  );
+  return { ...form, ministry_id: nextMinistryIds[0] ?? "", ministry_ids: nextMinistryIds, department_ids: nextDepartmentIds };
+}
+
+function toggleDepartment(form: ProfileFormState, departmentId: string) {
+  return {
+    ...form,
+    department_ids: form.department_ids.includes(departmentId)
+      ? form.department_ids.filter((item) => item !== departmentId)
+      : [...form.department_ids, departmentId],
+  };
+}
+
+function uniqueNames(values: (string | undefined)[]) {
+  return Array.from(new Set(values.filter(Boolean))) as string[];
 }
 
 function formatDate(value: string) {
