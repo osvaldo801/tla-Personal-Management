@@ -1,5 +1,5 @@
 import { Building2, LayoutDashboard, LogOut, Settings, ShieldCheck, Menu, Users, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { MinistriesPage } from "./pages/MinistriesPage";
@@ -47,6 +47,151 @@ const labels = {
   },
 };
 
+const interfaceTranslations: Record<string, { es: string; en: string }> = {
+  "Acceso": { es: "Acceso", en: "Access" },
+  "Acciones": { es: "Acciones", en: "Actions" },
+  "Actualizar": { es: "Actualizar", en: "Update" },
+  "Actualizar rol": { es: "Actualizar rol", en: "Update role" },
+  "Administracion": { es: "Administracion", en: "Administration" },
+  "Administración": { es: "Administración", en: "Administration" },
+  "Agregar": { es: "Agregar", en: "Add" },
+  "Agrega, cambia o borra ministerios y departamentos.": { es: "Agrega, cambia o borra ministerios y departamentos.", en: "Add, update or delete ministries and departments." },
+  "Borrar": { es: "Borrar", en: "Delete" },
+  "BUSCAR SERVIDOR": { es: "BUSCAR SERVIDOR", en: "SEARCH SERVER" },
+  "Cancelar": { es: "Cancelar", en: "Cancel" },
+  "Cancelar edicion": { es: "Cancelar edicion", en: "Cancel editing" },
+  "Clasificación": { es: "Clasificación", en: "Classification" },
+  "CLASIFICACIÓN": { es: "CLASIFICACIÓN", en: "CLASSIFICATION" },
+  "Comentarios": { es: "Comentarios", en: "Comments" },
+  "Configuracion de Organizacion": { es: "Configuracion de Organizacion", en: "Organization Settings" },
+  "Contacto de emergencia": { es: "Contacto de emergencia", en: "Emergency contact" },
+  "Copiar link": { es: "Copiar link", en: "Copy link" },
+  "Cumpleaños": { es: "Cumpleaños", en: "Birthday" },
+  "DEPARTAMENTOS": { es: "DEPARTAMENTOS", en: "DEPARTMENTS" },
+  "Departamento": { es: "Departamento", en: "Department" },
+  "DEPARTAMENTO": { es: "DEPARTAMENTO", en: "DEPARTMENT" },
+  "Departamentos": { es: "Departamentos", en: "Departments" },
+  "Descripcion": { es: "Descripcion", en: "Description" },
+  "Descripción": { es: "Descripción", en: "Description" },
+  "Dirección": { es: "Dirección", en: "Address" },
+  "Editar": { es: "Editar", en: "Edit" },
+  "Editar rol": { es: "Editar rol", en: "Edit role" },
+  "Editar servidor": { es: "Editar servidor", en: "Edit server" },
+  "Email institucional": { es: "Email institucional", en: "Institutional email" },
+  "Enviar invitacion": { es: "Enviar invitacion", en: "Send invitation" },
+  "Estado": { es: "Estado", en: "Status" },
+  "ESTADO": { es: "ESTADO", en: "STATUS" },
+  "Estado civil": { es: "Estado civil", en: "Marital status" },
+  "ESTATUS": { es: "ESTATUS", en: "STATUS" },
+  "Ficha del servidor": { es: "Ficha del servidor", en: "Server profile" },
+  "Gestion": { es: "Gestion", en: "Management" },
+  "Gestión": { es: "Gestión", en: "Management" },
+  "Guardar": { es: "Guardar", en: "Save" },
+  "Guardar cambios": { es: "Guardar cambios", en: "Save changes" },
+  "Guardar comentario": { es: "Guardar comentario", en: "Save comment" },
+  "Guardando...": { es: "Guardando...", en: "Saving..." },
+  "Habilidades o talentos": { es: "Habilidades o talentos", en: "Skills or talents" },
+  "Informacion": { es: "Informacion", en: "Information" },
+  "Información": { es: "Información", en: "Information" },
+  "Informacion general": { es: "Informacion general", en: "General information" },
+  "Inicio de servicio": { es: "Inicio de servicio", en: "Service start" },
+  "Lista operativa de servidores y colaboradores.": { es: "Lista operativa de servidores y colaboradores.", en: "Operational list of servers and collaborators." },
+  "Logo institucional": { es: "Logo institucional", en: "Institutional logo" },
+  "Ministerio": { es: "Ministerio", en: "Ministry" },
+  "MINISTERIO": { es: "MINISTERIO", en: "MINISTRY" },
+  "Ministerios": { es: "Ministerios", en: "Ministries" },
+  "Ministerios de servicio": { es: "Ministerios de servicio", en: "Service ministries" },
+  "Nombre": { es: "Nombre", en: "Name" },
+  "NOMBRE": { es: "NOMBRE", en: "NAME" },
+  "Nombre completo": { es: "Nombre completo", en: "Full name" },
+  "Nombre de iglesia/empresa": { es: "Nombre de iglesia/empresa", en: "Church/company name" },
+  "Nuevo servidor": { es: "Nuevo servidor", en: "New server" },
+  "No hay servidores para mostrar.": { es: "No hay servidores para mostrar.", en: "No servers to show." },
+  "No registrado": { es: "No registrado", en: "Not registered" },
+  "Perfil activo": { es: "Perfil activo", en: "Active profile" },
+  "Personaliza la informacion institucional usada en todo el sistema.": { es: "Personaliza la informacion institucional usada en todo el sistema.", en: "Customize the institutional information used across the system." },
+  "Rol": { es: "Rol", en: "Role" },
+  "SERVIDORES": { es: "SERVIDORES", en: "SERVERS" },
+  "Sin comentarios": { es: "Sin comentarios", en: "No comments" },
+  "Sin comentarios.": { es: "Sin comentarios.", en: "No comments." },
+  "Sin departamento": { es: "Sin departamento", en: "No department" },
+  "Sin departamentos.": { es: "Sin departamentos.", en: "No departments." },
+  "Sin ministerio": { es: "Sin ministerio", en: "No ministry" },
+  "Sitio web": { es: "Sitio web", en: "Website" },
+  "Solo podran acceder por invitacion. Al crear un usuario se envia un email y el rol por defecto es Lider de Ministerio.": { es: "Solo podran acceder por invitacion. Al crear un usuario se envia un email y el rol por defecto es Lider de Ministerio.", en: "Access is invitation-only. Creating a user sends an email and the default role is Ministry Leader." },
+  "Subir o reemplazar logo": { es: "Subir o reemplazar logo", en: "Upload or replace logo" },
+  "Telefono": { es: "Telefono", en: "Phone" },
+  "Teléfono": { es: "Teléfono", en: "Phone" },
+  "TELÉFONO": { es: "TELÉFONO", en: "PHONE" },
+  "Tipo": { es: "Tipo", en: "Type" },
+  "TIPO": { es: "TIPO", en: "TYPE" },
+  "Último comentario": { es: "Último comentario", en: "Last comment" },
+  "ÚLTIMO COMENTARIO": { es: "ÚLTIMO COMENTARIO", en: "LAST COMMENT" },
+  "Usuario": { es: "Usuario", en: "User" },
+  "Usuarios y Roles": { es: "Usuarios y Roles", en: "Users and Roles" },
+  "Vista previa del logo institucional": { es: "Vista previa del logo institucional", en: "Institutional logo preview" },
+  "Volver": { es: "Volver", en: "Back" },
+};
+
+const placeholderTranslations: Record<string, { es: string; en: string }> = {
+  "Buscar por nombre, email, teléfono, ministerio o departamento": {
+    es: "Buscar por nombre, email, teléfono, ministerio o departamento",
+    en: "Search by name, email, phone, ministry or department",
+  },
+  "Nombre, telefono, email o ministerio": {
+    es: "Nombre, telefono, email o ministerio",
+    en: "Name, phone, email or ministry",
+  },
+  "https://...": { es: "https://...", en: "https://..." },
+  "opcional": { es: "opcional", en: "optional" },
+};
+
+function translateInterface(language: Language) {
+  const lookup = new Map<string, string>();
+  Object.values(interfaceTranslations).forEach((entry) => {
+    lookup.set(entry.es, entry[language]);
+    lookup.set(entry.en, entry[language]);
+  });
+
+  const placeholderLookup = new Map<string, string>();
+  Object.values(placeholderTranslations).forEach((entry) => {
+    placeholderLookup.set(entry.es, entry[language]);
+    placeholderLookup.set(entry.en, entry[language]);
+  });
+
+  const shouldSkip = (element: Element | null) =>
+    !element ||
+    ["SCRIPT", "STYLE", "OPTION", "INPUT", "TEXTAREA"].includes(element.tagName) ||
+    element.closest(".participant-badge, .quick-result-button, .brand-name, .topbar-title, .user-pill");
+
+  const apply = () => {
+    const roots = document.querySelectorAll(".sidebar, .main-panel, .login-screen, .access-card");
+    roots.forEach((root) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      while (node) {
+        const parent = node.parentElement;
+        const text = node.textContent ?? "";
+        const trimmed = text.trim();
+        const next = lookup.get(trimmed);
+        if (!shouldSkip(parent) && next && next !== trimmed) {
+          node.textContent = text.replace(trimmed, next);
+        }
+        node = walker.nextNode();
+      }
+    });
+
+    document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input[placeholder], textarea[placeholder]").forEach((input) => {
+      const current = input.getAttribute("placeholder") ?? "";
+      const next = placeholderLookup.get(current);
+      if (next) input.setAttribute("placeholder", next);
+    });
+  };
+
+  apply();
+  return apply;
+}
+
 export function App() {
   const { session, profile, isAdmin, isLoading, signOut } = useAuth();
   const { settings } = useOrganizationSettings();
@@ -55,6 +200,13 @@ export function App() {
   const [profileQuery, setProfileQuery] = useState("");
   const [language, setLanguage] = useState<Language>("es");
   const t = labels[language];
+
+  useEffect(() => {
+    const apply = translateInterface(language);
+    const observer = new MutationObserver(() => apply());
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [language, view]);
 
   if (isLoading) {
     return <div className="screen-center">{t.loading}</div>;
@@ -165,10 +317,10 @@ export function App() {
               }}
             />
           )}
-          {view === "profiles" && <ProfilesPage initialQuery={profileQuery} language={language} />}
-          {view === "ministries" && isAdmin && <MinistriesPage language={language} />}
-          {view === "users" && isAdmin && <UsersPage language={language} />}
-          {view === "organization-settings" && isAdmin && <OrganizationSettingsPage language={language} />}
+          {view === "profiles" && <ProfilesPage initialQuery={profileQuery} />}
+          {view === "ministries" && isAdmin && <MinistriesPage />}
+          {view === "users" && isAdmin && <UsersPage />}
+          {view === "organization-settings" && isAdmin && <OrganizationSettingsPage />}
         </main>
       </div>
     </div>
