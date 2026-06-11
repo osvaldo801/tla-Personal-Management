@@ -1,10 +1,21 @@
 import { LogIn } from "lucide-react";
+import type { Language } from "../App";
 import { useAuth } from "../providers/AuthProvider";
 import { useOrganizationSettings } from "../providers/OrganizationProvider";
 
-export function Login() {
+const copy = {
+  es: {
+    continueWithGoogle: "Continuar con Google",
+  },
+  en: {
+    continueWithGoogle: "Continue with Google",
+  },
+};
+
+export function Login({ language = "es" }: { language?: Language }) {
   const { signInWithGoogle } = useAuth();
   const { settings } = useOrganizationSettings();
+  const t = copy[language];
 
   return (
     <div className="login-screen">
@@ -14,7 +25,7 @@ export function Login() {
         <p>{settings.address}</p>
         <button className="btn btn-primary" onClick={signInWithGoogle}>
           <LogIn size={18} />
-          Continuar con Google
+          {t.continueWithGoogle}
         </button>
         <span className="login-contact">{settings.phone}</span>
       </section>
