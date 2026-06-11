@@ -15,6 +15,7 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const publicAppUrl = "https://tla-personal-management.vercel.app";
 
 const demoProfile: AdminUser = {
   id: "demo-admin",
@@ -117,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: window.location.origin,
+            redirectTo: publicAppUrl,
           },
         });
       },
