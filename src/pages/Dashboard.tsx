@@ -6,18 +6,23 @@ import { demoMinistries, demoProfiles, type DemoMinistry, type DemoProfile } fro
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useOrganizationSettings } from "../providers/OrganizationProvider";
 
+type DashboardData = { ministries: DemoMinistry[]; profiles: DemoProfile[] };
+
+const emptyDashboardData: DashboardData = { ministries: [], profiles: [] };
+
 export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) => void }) {
   const { settings } = useOrganizationSettings();
   const [profileSearch, setProfileSearch] = useState("");
   const { data } = useQuery({
     queryKey: ["dashboard-data"],
     queryFn: fetchDashboardData,
-    initialData: { ministries: demoMinistries, profiles: demoProfiles },
+    initialData: getInitialDashboardData(),
   });
 
   const profiles = data.profiles;
   const ministries = data.ministries;
-  const total = profiles.length || 1;
+  const totalProfiles = profiles.length;
+  const totalForPercentages = totalProfiles || 1;
   const active = profiles.filter((profile) => profile.service_status === "Activo").length;
   const paused = profiles.filter((profile) => profile.service_status === "Pausado").length;
   const ministerial = profiles.filter((profile) => profile.service_type === "Ministerial").length;
@@ -34,7 +39,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   const maxMinistry = Math.max(...ministryCounts.map((item) => item.count), 1);
-  const activePercent = Math.round((active / total) * 100);
+  const activePercent = Math.round((active / totalForPercentages) * 100);
   const quickResults = useMemo(() => {
     const normalized = profileSearch.trim().toLowerCase();
     if (!normalized) return profiles.slice(0, 5);
@@ -64,7 +69,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
           <article className="analytics-card kpi-card">
             <Users size={28} />
             <span>Total servidores</span>
-            <strong>{total}</strong>
+            <strong>{totalProfiles}</strong>
           </article>
 
           <article className="analytics-card kpi-card">
@@ -98,6 +103,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
                   <span>{profile.ministry} - {profile.phone}</span>
                 </button>
               ))}
+              {quickResults.length === 0 && <p className="helper-text">No hay servidores para mostrar.</p>}
             </div>
           </article>
 
@@ -121,14 +127,15 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
                   <strong>{item.count}</strong>
                 </div>
               ))}
+              {ministryCounts.length === 0 && <p className="helper-text">Sin datos ministeriales.</p>}
             </div>
           </article>
 
           <article className="analytics-card designation-card">
             <h2>TIPO DE SERVICIO</h2>
             <div className="bar-list">
-              <MetricBar label="Ministerial" value={ministerial} total={total} />
-              <MetricBar label="Administrativo" value={administrative} total={total} />
+              <MetricBar label="Ministerial" value={ministerial} total={totalForPercentages} />
+              <MetricBar label="Administrativo" value={administrative} total={totalForPercentages} />
             </div>
           </article>
 
@@ -146,7 +153,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
             </div>
             <div className="total-number">
               <span>Total Servidores</span>
-              <strong>{total}</strong>
+              <strong>{totalProfiles}</strong>
             </div>
           </article>
         </div>
@@ -174,6 +181,11 @@ function BirthdayList({ title, profiles }: { title: string; profiles: DemoProfil
       )}
     </div>
   );
+}
+
+function getInitialDashboardData(): DashboardData {
+  if (isSupabaseConfigured) return emptyDashboardData;
+  return { ministries: demoMinistries, profiles: demoProfiles };
 }
 
 function getBirthdayGroups(profiles: DemoProfile[]) {
@@ -229,7 +241,7 @@ function formatBirthday(date: string) {
   return new Intl.DateTimeFormat("es-US", { month: "long", day: "numeric" }).format(parsed);
 }
 
-async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profiles: DemoProfile[] }> {
+async function fetchDashboardData(): Promise<DashboardData> {
   if (!isSupabaseConfigured) {
     return { ministries: demoMinistries, profiles: demoProfiles };
   }
@@ -238,26 +250,35 @@ async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profi
     { data: ministriesData, error: ministriesError },
     { data: profilesData, error: profilesError },
     { data: profileMinistriesData, error: profileMinistriesError },
-  ] =
-    await Promise.all([
-      supabase.from("ministries").select("id, name, description, active").eq("active", true).order("name"),
-      supabase.from("server_profiles").select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, active, ministries(name), comments(comment, created_at)").order("full_name"),
-      supabase.from("server_profile_ministries").select("profile_id, ministries(name)"),
-    ]);
+  ] = await Promise.all([
+    supabase.from("ministries").select("id, name, description, active").eq("active", true).order("name"),
+    supabase
+      .from("server_profiles")
+      .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, ministry_id, active")
+      .order("full_name"),
+    supabase.from("server_profile_ministries").select("profile_id, ministry_id"),
+  ]);
 
-  if (ministriesError || profilesError || profileMinistriesError) {
-    return { ministries: demoMinistries, profiles: demoProfiles };
+  if (ministriesError || profilesError) {
+    console.error("Dashboard data error", { ministriesError, profilesError });
+    return emptyDashboardData;
   }
 
-  const ministriesByProfile = groupByProfile(profileMinistriesData ?? []);
+  if (profileMinistriesError) {
+    console.error("Dashboard ministry assignment error", profileMinistriesError);
+  }
+
+  const ministries = (ministriesData ?? []) as DemoMinistry[];
+  const ministryById = new Map(ministries.map((ministry) => [ministry.id, ministry.name]));
+  const ministriesByProfile = groupByProfile(profileMinistriesError ? [] : profileMinistriesData ?? []);
 
   return {
-    ministries: (ministriesData ?? []) as DemoMinistry[],
+    ministries,
     profiles: (profilesData ?? []).map((profile: any) => {
       const assignedMinistries = ministriesByProfile.get(profile.id) ?? [];
       const ministryNames = assignedMinistries.length
-        ? assignedMinistries.map((item: any) => item.ministries?.name)
-        : [profile.ministries?.name ?? "Sin ministerio"];
+        ? assignedMinistries.map((item: any) => ministryById.get(item.ministry_id))
+        : [profile.ministry_id ? ministryById.get(profile.ministry_id) : undefined];
 
       return {
         id: profile.id,
@@ -267,11 +288,10 @@ async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profi
         email: profile.email ?? "",
         birth_date: profile.birth_date ?? "",
         service_start_date: profile.service_start_date ?? "",
-        service_status: profile.service_status,
-        service_type: profile.service_type,
+        service_status: profile.service_status ?? "Activo",
+        service_type: profile.service_type ?? "Ministerial",
         ministry: uniqueNames(ministryNames).join(", ") || "Sin ministerio",
-        active: profile.active,
-        last_comment: latestComment(profile.comments),
+        active: profile.active ?? true,
       };
     }),
   };
@@ -289,11 +309,6 @@ function groupByProfile(rows: any[]) {
 
 function uniqueNames(values: (string | undefined)[]) {
   return Array.from(new Set(values.filter(Boolean))) as string[];
-}
-
-function latestComment(comments: { comment: string; created_at: string }[] | null | undefined) {
-  if (!comments?.length) return "";
-  return [...comments].sort((a, b) => b.created_at.localeCompare(a.created_at))[0]?.comment ?? "";
 }
 
 function MetricBar({ label, value, total }: { label: string; value: number; total: number }) {
