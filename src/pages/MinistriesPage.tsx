@@ -1,7 +1,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
-import { demoMinistries, demoProfiles, demoStatusOptions, type DemoMinistry, type DemoProfile, type DemoStatusOption } from "../data/demoData";
+import { demoStatusOptions, type DemoMinistry, type DemoProfile, type DemoStatusOption } from "../data/demoData";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 
 type MinistryFormState = {
@@ -52,16 +52,30 @@ const emptyStatusForm: StatusFormState = {
   active: true,
 };
 
+type MinistriesPageData = {
+  departments: DepartmentRecord[];
+  ministries: DemoMinistry[];
+  profiles: DemoProfile[];
+  statuses: DemoStatusOption[];
+};
+
+const emptyMinistriesPageData: MinistriesPageData = {
+  departments: [],
+  ministries: [],
+  profiles: [],
+  statuses: demoStatusOptions,
+};
+
 export function MinistriesPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<MinistryFormState>(emptyMinistryForm);
   const [departmentForm, setDepartmentForm] = useState<DepartmentFormState>(emptyDepartmentForm);
   const [statusForm, setStatusForm] = useState<StatusFormState>(emptyStatusForm);
   const [message, setMessage] = useState<string | null>(null);
-  const { data } = useQuery({
+  const { data, error, isLoading } = useQuery({
     queryKey: ["ministries-page-data"],
     queryFn: fetchMinistriesPageData,
-    initialData: { departments: [] as DepartmentRecord[], ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions },
+    initialData: emptyMinistriesPageData,
   });
 
   const ministries = data.ministries;
@@ -103,6 +117,8 @@ export function MinistriesPage() {
       setForm(emptyMinistryForm);
       setMessage("Ministerio guardado correctamente.");
       await queryClient.invalidateQueries({ queryKey: ["ministries-page-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
     },
   });
 
@@ -139,6 +155,7 @@ export function MinistriesPage() {
       setDepartmentForm(emptyDepartmentForm);
       setMessage("Departamento guardado correctamente.");
       await queryClient.invalidateQueries({ queryKey: ["ministries-page-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
     },
   });
 
@@ -169,6 +186,7 @@ export function MinistriesPage() {
       setStatusForm(emptyStatusForm);
       setMessage("Estatus guardado correctamente.");
       await queryClient.invalidateQueries({ queryKey: ["ministries-page-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
     },
   });
 
@@ -253,6 +271,9 @@ export function MinistriesPage() {
           <p>Agrega, cambia o borra ministerios y departamentos.</p>
         </div>
       </section>
+
+      {error && <div className="alert error">No se pudieron cargar los ministerios.</div>}
+      {isLoading && <div className="panel helper-text">Cargando ministerios...</div>}
 
       <form className="panel catalog-form" onSubmit={submit}>
         <label className="field">
@@ -407,48 +428,43 @@ export function MinistriesPage() {
   );
 }
 
-async function fetchMinistriesPageData(): Promise<{ departments: DepartmentRecord[]; ministries: DemoMinistry[]; profiles: DemoProfile[]; statuses: DemoStatusOption[] }> {
-  if (!isSupabaseConfigured) {
-    return { departments: [], ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions };
+async function fetchMinistriesPageData(): Promise<MinistriesPageData> {
+  if (!isSupabaseConfigured) return emptyMinistriesPageData;
+
+  const [ministriesResult, departmentsResult, profilesResult, profileMinistriesResult, statusesResult] = await Promise.all([
+    supabase.from("ministries").select("id, name, description, active").order("name"),
+    supabase.from("ministry_departments").select("id, ministry_id, name, description, active").order("name"),
+    supabase.from("server_profiles").select("id, full_name, service_status, service_type, active, ministry_id").order("full_name"),
+    supabase.from("server_profile_ministries").select("profile_id, ministry_id"),
+    supabase.from("service_status_options").select("id, name, active").order("name"),
+  ]);
+
+  if (ministriesResult.error) {
+    console.error("Ministries data error", ministriesResult.error);
+    throw ministriesResult.error;
   }
 
-  const [
-    { data: ministriesData, error: ministriesError },
-    { data: departmentsData, error: departmentsError },
-    { data: profilesData, error: profilesError },
-    { data: profileMinistriesData, error: profileMinistriesError },
-    { data: statusesData, error: statusesError },
-  ] =
-    await Promise.all([
-      supabase.from("ministries").select("id, name, description, active").order("name"),
-      supabase.from("ministry_departments").select("id, ministry_id, name, description, active, ministries(name)").order("name"),
-      supabase.from("server_profiles").select("id, full_name, service_status, service_type, active, ministry_id, ministries(name)").order("full_name"),
-      supabase.from("server_profile_ministries").select("profile_id, ministry_id, ministries(name)"),
-      supabase.from("service_status_options").select("id, name, active").order("name"),
-    ]);
-
-  if (ministriesError || departmentsError || profilesError || profileMinistriesError || statusesError) {
-    return { departments: [], ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions };
-  }
-
-  const ministriesByProfile = groupByProfile(profileMinistriesData ?? []);
+  const ministries = (ministriesResult.data ?? []) as DemoMinistry[];
+  const ministryById = new Map(ministries.map((ministry) => [ministry.id, ministry.name]));
+  const ministriesByProfile = groupByProfile(profileMinistriesResult.error ? [] : profileMinistriesResult.data ?? []);
 
   return {
-    departments: (departmentsData ?? []).map((department: any) => ({
+    departments: (departmentsResult.error ? [] : departmentsResult.data ?? []).map((department: any) => ({
       id: department.id,
       ministry_id: department.ministry_id,
-      ministry_name: department.ministries?.name ?? "Sin ministerio",
+      ministry_name: ministryById.get(department.ministry_id) ?? "Sin ministerio",
       name: department.name,
       description: department.description ?? "",
       active: department.active,
     })),
-    ministries: (ministriesData ?? []) as DemoMinistry[],
-    statuses: (statusesData ?? []) as DemoStatusOption[],
-    profiles: (profilesData ?? []).map((profile: any) => {
+    ministries,
+    statuses: (statusesResult.error ? demoStatusOptions : statusesResult.data ?? demoStatusOptions) as DemoStatusOption[],
+    profiles: (profilesResult.error ? [] : profilesResult.data ?? []).map((profile: any) => {
       const profileMinistries = ministriesByProfile.get(profile.id) ?? [];
-      const ministryNames = profileMinistries.length
-        ? profileMinistries.map((item: any) => item.ministries?.name)
-        : [profile.ministries?.name ?? "Sin ministerio"];
+      const ministryIds = profileMinistries.length
+        ? profileMinistries.map((item: any) => item.ministry_id)
+        : [profile.ministry_id].filter(Boolean);
+      const ministryNames = ministryIds.map((ministryId: string) => ministryById.get(ministryId));
 
       return {
         id: profile.id,
@@ -458,10 +474,10 @@ async function fetchMinistriesPageData(): Promise<{ departments: DepartmentRecor
         email: "",
         birth_date: "",
         service_start_date: "",
-        service_status: profile.service_status,
-        service_type: profile.service_type,
+        service_status: profile.service_status ?? "Activo",
+        service_type: profile.service_type ?? "Ministerial",
         ministry: uniqueNames(ministryNames).join(", ") || "Sin ministerio",
-        active: profile.active,
+        active: profile.active ?? true,
       };
     }),
   };
