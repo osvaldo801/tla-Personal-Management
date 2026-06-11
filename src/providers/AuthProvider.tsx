@@ -9,6 +9,7 @@ type AuthContextValue = {
   authUser: User | null;
   profile: AdminUser | null;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   isLoading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -21,7 +22,7 @@ const demoProfile: AdminUser = {
   id: "demo-admin",
   full_name: "Osvaldo Vasquez",
   email: "osvaldo801@gmail.com",
-  role: "admin",
+  role: "super_admin",
   ministry_id: null,
   created_at: new Date().toISOString(),
 };
@@ -106,7 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       authUser: session?.user ?? null,
       profile,
-      isAdmin: profile?.role === "admin",
+      isAdmin: profile?.role === "super_admin" || profile?.role === "admin",
+      isSuperAdmin: profile?.role === "super_admin",
       isLoading,
       signInWithGoogle: async () => {
         if (!isSupabaseConfigured) {
