@@ -123,7 +123,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
       const selectedDepartmentIds = payload.department_ids.filter((departmentId) =>
         departments.some((department) => department.id === departmentId && payload.ministry_ids.includes(department.ministry_id)),
       );
-      const primaryMinistryId = payload.ministry_ids[0] ?? payload.ministry_id || null;
+      const primaryMinistryId = payload.ministry_ids[0] || payload.ministry_id || null;
       const record = {
         full_name: payload.full_name.trim(),
         address: payload.address.trim() || null,
