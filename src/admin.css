@@ -1,3 +1,14 @@
+.dashboard-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.dashboard-kpi-row .kpi-card {
+  grid-column: auto;
+}
+
 .dashboard-quick-row {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
@@ -313,6 +324,7 @@
   .profile-editor-grid,
   .user-form,
   .catalog-form,
+  .dashboard-kpi-row,
   .dashboard-quick-row,
   .birthdays-card {
     grid-template-columns: 1fr;
