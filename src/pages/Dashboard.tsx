@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { Cake, Clock, Search, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { Language } from "../App";
 import { demoMinistries, demoProfiles, type DemoMinistry, type DemoProfile } from "../data/demoData";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useOrganizationSettings } from "../providers/OrganizationProvider";
@@ -10,9 +11,49 @@ type DashboardData = { ministries: DemoMinistry[]; profiles: DemoProfile[] };
 
 const emptyDashboardData: DashboardData = { ministries: [], profiles: [] };
 
-export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) => void }) {
+const copy = {
+  es: {
+    active: "Activos",
+    averageYears: "Antiguedad promedio (anos)",
+    birthdays: "Cumpleanos",
+    currentMonth: "Este mes",
+    dashboard: "Dashboard principal",
+    ministryDataEmpty: "Sin datos ministeriales.",
+    ministryServers: "SERVIDORES POR MINISTERIO",
+    newThisMonth: "Nuevos este mes",
+    nextMonth: "Mes siguiente",
+    noBirthdays: "Sin cumpleanos registrados.",
+    noServers: "No hay servidores para mostrar.",
+    paused: "Pausados",
+    searchPlaceholder: "Nombre, telefono, email o ministerio",
+    searchServer: "BUSCAR SERVIDOR",
+    serviceType: "TIPO DE SERVICIO",
+    totalServers: "Total servidores",
+  },
+  en: {
+    active: "Active",
+    averageYears: "Average seniority (years)",
+    birthdays: "Birthdays",
+    currentMonth: "This month",
+    dashboard: "Main dashboard",
+    ministryDataEmpty: "No ministry data.",
+    ministryServers: "SERVERS BY MINISTRY",
+    newThisMonth: "New this month",
+    nextMonth: "Next month",
+    noBirthdays: "No birthdays registered.",
+    noServers: "No servers to show.",
+    paused: "Paused",
+    searchPlaceholder: "Name, phone, email or ministry",
+    searchServer: "SEARCH SERVER",
+    serviceType: "SERVICE TYPE",
+    totalServers: "Total servers",
+  },
+};
+
+export function Dashboard({ language = "es", onOpenProfile }: { language?: Language; onOpenProfile?: (search: string) => void }) {
   const { settings } = useOrganizationSettings();
   const [profileSearch, setProfileSearch] = useState("");
+  const t = copy[language];
   const { data } = useQuery({
     queryKey: ["dashboard-data"],
     queryFn: fetchDashboardData,
@@ -59,7 +100,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
         <div className="dashboard-title-strip">
           <img src={settings.logo_url} alt={settings.organization_name} />
           <div>
-            <p className="eyebrow">Dashboard principal</p>
+            <p className="eyebrow">{t.dashboard}</p>
             <h1>{settings.organization_name}</h1>
             <span>{settings.address}</span>
           </div>
@@ -68,32 +109,32 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
         <section className="dashboard-kpi-row">
           <article className="analytics-card kpi-card">
             <Users size={28} />
-            <span>Total servidores</span>
+            <span>{t.totalServers}</span>
             <strong>{totalProfiles}</strong>
           </article>
 
           <article className="analytics-card kpi-card">
             <UserPlus size={28} />
-            <span>Nuevos este mes</span>
+            <span>{t.newThisMonth}</span>
             <strong>{newThisMonth}</strong>
           </article>
 
           <article className="analytics-card kpi-card">
             <Clock size={28} />
-            <span>Antigüedad promedio (años)</span>
+            <span>{t.averageYears}</span>
             <strong>{averageYears}</strong>
           </article>
         </section>
 
         <section className="dashboard-quick-row">
           <article className="analytics-card quick-search-card">
-            <h2>BUSCAR SERVIDOR</h2>
+            <h2>{t.searchServer}</h2>
             <label className="search-field">
               <Search size={18} />
               <input
                 value={profileSearch}
                 onChange={(event) => setProfileSearch(event.target.value)}
-                placeholder="Nombre, teléfono, email o ministerio"
+                placeholder={t.searchPlaceholder}
               />
             </label>
             <div className="quick-results">
@@ -103,20 +144,20 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
                   <span>{profile.ministry} - {profile.phone}</span>
                 </button>
               ))}
-              {quickResults.length === 0 && <p className="helper-text">No hay servidores para mostrar.</p>}
+              {quickResults.length === 0 && <p className="helper-text">{t.noServers}</p>}
             </div>
           </article>
 
           <article className="analytics-card birthdays-card">
-            <h2>Cumpleaños</h2>
-            <BirthdayList title="Este mes" profiles={birthdayGroups.current} />
-            <BirthdayList title="Mes siguiente" profiles={birthdayGroups.next} />
+            <h2>{t.birthdays}</h2>
+            <BirthdayList emptyText={t.noBirthdays} title={t.currentMonth} profiles={birthdayGroups.current} />
+            <BirthdayList emptyText={t.noBirthdays} title={t.nextMonth} profiles={birthdayGroups.next} />
           </article>
         </section>
 
         <div className="analytics-grid">
           <article className="analytics-card ministry-map">
-            <h2>SERVIDORES POR MINISTERIO</h2>
+            <h2>{t.ministryServers}</h2>
             <div className="expense-list">
               {ministryCounts.map((item) => (
                 <div className="expense-row" key={item.name}>
@@ -127,15 +168,15 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
                   <strong>{item.count}</strong>
                 </div>
               ))}
-              {ministryCounts.length === 0 && <p className="helper-text">Sin datos ministeriales.</p>}
+              {ministryCounts.length === 0 && <p className="helper-text">{t.ministryDataEmpty}</p>}
             </div>
           </article>
 
           <article className="analytics-card designation-card">
-            <h2>TIPO DE SERVICIO</h2>
+            <h2>{t.serviceType}</h2>
             <div className="bar-list">
               <MetricBar label="Ministerial" value={ministerial} total={totalForPercentages} />
-              <MetricBar label="Administrativo" value={administrative} total={totalForPercentages} />
+              <MetricBar label={language === "en" ? "Administrative" : "Administrativo"} value={administrative} total={totalForPercentages} />
             </div>
           </article>
 
@@ -146,13 +187,13 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
               </div>
             </div>
             <div className="people-numbers">
-              <span>Activos</span>
+              <span>{t.active}</span>
               <strong className="green-number">{active}</strong>
-              <span>Pausados</span>
+              <span>{t.paused}</span>
               <strong className="blue-number">{paused}</strong>
             </div>
             <div className="total-number">
-              <span>Total Servidores</span>
+              <span>{t.totalServers}</span>
               <strong>{totalProfiles}</strong>
             </div>
           </article>
@@ -162,7 +203,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
   );
 }
 
-function BirthdayList({ title, profiles }: { title: string; profiles: DemoProfile[] }) {
+function BirthdayList({ emptyText, title, profiles }: { emptyText: string; title: string; profiles: DemoProfile[] }) {
   return (
     <div className="birthday-list">
       <h3>
@@ -170,7 +211,7 @@ function BirthdayList({ title, profiles }: { title: string; profiles: DemoProfil
         {title}
       </h3>
       {profiles.length === 0 ? (
-        <p>Sin cumpleaños registrados.</p>
+        <p>{emptyText}</p>
       ) : (
         profiles.map((profile) => (
           <div key={profile.id}>
