@@ -5,6 +5,8 @@ import { demoStatusOptions, type DemoMinistry, type DemoProfile, type DemoStatus
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useAuth } from "../providers/AuthProvider";
 
+type ParticipantType = "Servidor" | "Colaborador";
+
 type ProfileComment = {
   id: string;
   comment: string;
@@ -26,6 +28,7 @@ type ProfileRecord = DemoProfile & {
   department_ids?: string[];
   departments?: string;
   comments?: ProfileComment[];
+  participant_type?: ParticipantType;
   baptism_status?: string;
   profession_year?: string;
   membership_since_year?: string;
@@ -48,6 +51,7 @@ type ProfileFormState = {
   service_start_date: string;
   service_status: string;
   service_type: DemoProfile["service_type"];
+  participant_type: ParticipantType;
   ministry_id: string;
   ministry_ids: string[];
   department_ids: string[];
@@ -70,6 +74,7 @@ const emptyProfileForm: ProfileFormState = {
   service_start_date: "",
   service_status: "Activo",
   service_type: "Ministerial",
+  participant_type: "Servidor",
   ministry_id: "",
   ministry_ids: [],
   department_ids: [],
@@ -120,6 +125,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
         profile.full_name.toLowerCase().includes(normalizedQuery) ||
         profile.email.toLowerCase().includes(normalizedQuery) ||
         profile.phone.includes(normalizedQuery) ||
+        profile.participant_type?.toLowerCase().includes(normalizedQuery) ||
         searchableMinistries.includes(normalizedQuery) ||
         searchableDepartments.includes(normalizedQuery);
       const matchesMinistry = ministry === "Todos" || profile.ministry.split(", ").includes(ministry);
@@ -147,6 +153,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
         service_start_date: payload.service_start_date || null,
         service_status: payload.service_status,
         service_type: payload.service_type,
+        participant_type: payload.participant_type,
         ministry_id: primaryMinistryId,
         active: payload.active,
       };
@@ -228,7 +235,10 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
           <div>
             <p className="eyebrow">Ficha del servidor</p>
             <h1>{detailProfile.full_name}</h1>
-            <p>{detailProfile.ministry} - {detailProfile.service_status}</p>
+            <div className="profile-heading-meta">
+              <ParticipantBadge value={detailProfile.participant_type ?? "Servidor"} />
+              <span>{detailProfile.ministry} - {detailProfile.service_status}</span>
+            </div>
           </div>
           <div className="detail-actions">
             {isAdmin && (
@@ -251,6 +261,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
         <section className="profile-detail-grid">
           <article className="panel profile-info-panel">
             <h2>Información</h2>
+            <Info label="Clasificación" value={detailProfile.participant_type ?? "Servidor"} />
             <Info label="Teléfono" value={detailProfile.phone} />
             <Info label="Email" value={detailProfile.email} />
             <Info label="Dirección" value={detailProfile.address} />
@@ -372,6 +383,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
             <thead>
               <tr>
                 <th>Nombre</th>
+                <th>Clasificación</th>
                 <th>Ministerio</th>
                 <th>Departamento</th>
                 <th>Estado</th>
@@ -397,7 +409,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
               ))}
               {!isLoading && filteredProfiles.length === 0 && (
                 <tr>
-                  <td colSpan={9}>No hay servidores para mostrar.</td>
+                  <td colSpan={10}>No hay servidores para mostrar.</td>
                 </tr>
               )}
             </tbody>
@@ -462,6 +474,7 @@ function ProfileRow({
         </button>
         <span>{profile.address}</span>
       </td>
+      <td><ParticipantBadge value={profile.participant_type ?? "Servidor"} /></td>
       <td>{profile.ministry}</td>
       <td>{profile.departments || "Sin departamento"}</td>
       <td>
@@ -517,6 +530,7 @@ function ProfileCard({
       <button className="link-button profile-card-title" onClick={() => onOpen(profile.id)} type="button">
         {profile.full_name}
       </button>
+      <ParticipantBadge value={profile.participant_type ?? "Servidor"} />
       <span className={`status-pill status-${profile.service_status.toLowerCase()}`}>{profile.service_status}</span>
       <p>{profile.ministry} - {profile.service_type}</p>
       <p>{profile.departments || "Sin departamento"}</p>
@@ -583,6 +597,13 @@ function ProfileEditor({
           <Field label="Cumpleaños" type="date" value={form.birth_date} onChange={(value) => onChange({ ...form, birth_date: value })} />
           <Field label="Inicio de servicio" type="date" value={form.service_start_date} onChange={(value) => onChange({ ...form, service_start_date: value })} />
           <label className="field">
+            <span>Clasificación</span>
+            <select value={form.participant_type} onChange={(event) => onChange({ ...form, participant_type: event.target.value as ParticipantType })}>
+              <option>Servidor</option>
+              <option>Colaborador</option>
+            </select>
+          </label>
+          <label className="field">
             <span>Ministerios</span>
             <div className="check-list">
               {ministries.map((item) => (
@@ -644,6 +665,10 @@ function ProfileEditor({
   );
 }
 
+function ParticipantBadge({ value }: { value: ParticipantType }) {
+  return <span className={`participant-badge ${value === "Servidor" ? "server" : "collaborator"}`}>{value}</span>;
+}
+
 function Field({ label, onChange, type = "text", value }: { label: string; onChange: (value: string) => void; type?: string; value: string }) {
   return (
     <label className="field">
@@ -698,7 +723,7 @@ async function fetchProfilesPageData(): Promise<ProfilesPageData> {
     supabase.from("ministry_departments").select("id, ministry_id, name, active").eq("active", true).order("name"),
     supabase
       .from("server_profiles")
-      .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, ministry_id, active, marital_status, emergency_contact_name, emergency_contact_phone, baptism_status, profession_year, membership_since_year, membership_classes, service_availability, skills_talents, service_ministries")
+      .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, participant_type, ministry_id, active, marital_status, emergency_contact_name, emergency_contact_phone, baptism_status, profession_year, membership_since_year, membership_classes, service_availability, skills_talents, service_ministries")
       .order("full_name"),
     supabase.from("server_profile_ministries").select("profile_id, ministry_id"),
     supabase.from("server_profile_departments").select("profile_id, department_id"),
@@ -757,6 +782,7 @@ async function fetchProfilesPageData(): Promise<ProfilesPageData> {
         service_start_date: profile.service_start_date ?? "",
         service_status: profile.service_status ?? "Activo",
         service_type: profile.service_type ?? "Ministerial",
+        participant_type: profile.participant_type === "Colaborador" ? "Colaborador" : "Servidor",
         ministry: uniqueNames(ministryNames).join(", ") || "Sin ministerio",
         ministry_id: profile.ministry_id,
         ministry_ids: ministryIds,
@@ -818,6 +844,7 @@ function toFormState(profile: ProfileRecord): ProfileFormState {
     service_start_date: profile.service_start_date,
     service_status: profile.service_status,
     service_type: profile.service_type,
+    participant_type: profile.participant_type ?? "Servidor",
     ministry_id: profile.ministry_id ?? "",
     ministry_ids: profile.ministry_ids?.length ? profile.ministry_ids : [profile.ministry_id ?? ""].filter(Boolean),
     department_ids: profile.department_ids ?? [],
