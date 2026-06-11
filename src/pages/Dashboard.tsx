@@ -20,20 +20,21 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
   const total = profiles.length || 1;
   const active = profiles.filter((profile) => profile.service_status === "Activo").length;
   const paused = profiles.filter((profile) => profile.service_status === "Pausado").length;
-  const cancelled = profiles.filter((profile) => profile.service_status === "Cancelado").length;
   const ministerial = profiles.filter((profile) => profile.service_type === "Ministerial").length;
   const administrative = profiles.filter((profile) => profile.service_type === "Administrativo").length;
   const newThisMonth = profiles.filter((profile) => isCurrentMonth(profile.service_start_date)).length;
   const averageYears = getAverageServiceYears(profiles);
 
-  const ministryCounts = ministries.map((ministry) => ({
-    name: ministry.name,
-    count: profiles.filter((profile) => profile.ministry === ministry.name).length,
-  }));
+  const ministryCounts = ministries
+    .map((ministry) => ({
+      name: ministry.name,
+      count: profiles.filter((profile) => profile.ministry.split(", ").includes(ministry.name)).length,
+    }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   const maxMinistry = Math.max(...ministryCounts.map((item) => item.count), 1);
   const activePercent = Math.round((active / total) * 100);
-  const ministerialPercent = Math.round((ministerial / total) * 100);
   const quickResults = useMemo(() => {
     const normalized = profileSearch.trim().toLowerCase();
     if (!normalized) return profiles.slice(0, 5);
@@ -110,11 +111,14 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
         <div className="analytics-grid">
           <article className="analytics-card ministry-map">
             <h2>SERVIDORES POR MINISTERIO</h2>
-            <div className="treemap">
-              {ministryCounts.map((item, index) => (
-                <div className={`tree-cell tree-${index + 1}`} key={item.name}>
-                  <strong>{item.name}</strong>
-                  <span>{item.count}</span>
+            <div className="expense-list">
+              {ministryCounts.map((item) => (
+                <div className="expense-row" key={item.name}>
+                  <span>{item.name}</span>
+                  <div>
+                    <i style={{ width: `${(item.count / maxMinistry) * 100}%` }} />
+                  </div>
+                  <strong>{item.count}</strong>
                 </div>
               ))}
             </div>
@@ -143,44 +147,6 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
             <div className="total-number">
               <span>Total Servidores</span>
               <strong>{total}</strong>
-            </div>
-          </article>
-
-          <article className="analytics-card dark-card wide-card">
-            <h2>ESTATUS DE SERVICIO</h2>
-            <div className="dark-bars">
-              <MetricBar label="Activo" value={active} total={total} />
-              <MetricBar label="Pausado" value={paused} total={total} />
-              <MetricBar label="Cancelado" value={cancelled} total={total} />
-            </div>
-          </article>
-
-          <article className="analytics-card expense-card">
-            <h2>CARGA POR MINISTERIO</h2>
-            <div className="expense-list">
-              {ministryCounts.map((item) => (
-                <div className="expense-row" key={item.name}>
-                  <span>{item.name}</span>
-                  <div>
-                    <i style={{ width: `${(item.count / maxMinistry) * 100}%` }} />
-                  </div>
-                  <strong>{item.count}</strong>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="analytics-card gauge-card">
-            <h2>PARTICIPACIÓN MINISTERIAL</h2>
-            <div className="gauge">
-              <div className="gauge-arc" style={{ "--value": `${ministerialPercent}%` } as CSSProperties} />
-              <strong>{ministerialPercent}%</strong>
-              <span>Ministerial</span>
-            </div>
-            <div className="legend-row">
-              <span><i className="legend-good" /> Bueno</span>
-              <span><i className="legend-ok" /> Ok</span>
-              <span><i className="legend-bad" /> Atención</span>
             </div>
           </article>
         </div>
@@ -271,33 +237,58 @@ async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profi
   const [
     { data: ministriesData, error: ministriesError },
     { data: profilesData, error: profilesError },
+    { data: profileMinistriesData, error: profileMinistriesError },
   ] =
     await Promise.all([
-      supabase.from("ministries").select("id, name, description, active").order("name"),
+      supabase.from("ministries").select("id, name, description, active").eq("active", true).order("name"),
       supabase.from("server_profiles").select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, active, ministries(name), comments(comment, created_at)").order("full_name"),
+      supabase.from("server_profile_ministries").select("profile_id, ministries(name)"),
     ]);
 
-  if (ministriesError || profilesError) {
+  if (ministriesError || profilesError || profileMinistriesError) {
     return { ministries: demoMinistries, profiles: demoProfiles };
   }
 
+  const ministriesByProfile = groupByProfile(profileMinistriesData ?? []);
+
   return {
     ministries: (ministriesData ?? []) as DemoMinistry[],
-    profiles: (profilesData ?? []).map((profile: any) => ({
-      id: profile.id,
-      full_name: profile.full_name,
-      address: profile.address ?? "",
-      phone: profile.phone ?? "",
-      email: profile.email ?? "",
-      birth_date: profile.birth_date ?? "",
-      service_start_date: profile.service_start_date ?? "",
-      service_status: profile.service_status,
-      service_type: profile.service_type,
-      ministry: profile.ministries?.name ?? "Sin ministerio",
-      active: profile.active,
-      last_comment: latestComment(profile.comments),
-    })),
+    profiles: (profilesData ?? []).map((profile: any) => {
+      const assignedMinistries = ministriesByProfile.get(profile.id) ?? [];
+      const ministryNames = assignedMinistries.length
+        ? assignedMinistries.map((item: any) => item.ministries?.name)
+        : [profile.ministries?.name ?? "Sin ministerio"];
+
+      return {
+        id: profile.id,
+        full_name: profile.full_name,
+        address: profile.address ?? "",
+        phone: profile.phone ?? "",
+        email: profile.email ?? "",
+        birth_date: profile.birth_date ?? "",
+        service_start_date: profile.service_start_date ?? "",
+        service_status: profile.service_status,
+        service_type: profile.service_type,
+        ministry: uniqueNames(ministryNames).join(", ") || "Sin ministerio",
+        active: profile.active,
+        last_comment: latestComment(profile.comments),
+      };
+    }),
   };
+}
+
+function groupByProfile(rows: any[]) {
+  const grouped = new Map<string, any[]>();
+  rows.forEach((row) => {
+    const current = grouped.get(row.profile_id) ?? [];
+    current.push(row);
+    grouped.set(row.profile_id, current);
+  });
+  return grouped;
+}
+
+function uniqueNames(values: (string | undefined)[]) {
+  return Array.from(new Set(values.filter(Boolean))) as string[];
 }
 
 function latestComment(comments: { comment: string; created_at: string }[] | null | undefined) {
