@@ -9,15 +9,18 @@ import { UsersPage } from "./pages/UsersPage";
 import { useAuth } from "./providers/AuthProvider";
 import { useOrganizationSettings } from "./providers/OrganizationProvider";
 
+export type Language = "es" | "en";
 type View = "dashboard" | "profiles" | "ministries" | "users" | "organization-settings";
-type Language = "es" | "en";
 
 const labels = {
   es: {
     admin: "Administrador",
+    closeMenu: "Cerrar menu",
     dashboard: "Dashboard",
+    loading: "Cargando...",
     ministryLeader: "Lider de Ministerio",
     ministries: "Ministerios",
+    openMenu: "Abrir menu",
     organizationSettings: "Configuracion de Organizacion",
     panel: "Panel administrativo",
     pendingAccess: "Acceso pendiente",
@@ -28,9 +31,12 @@ const labels = {
   },
   en: {
     admin: "Administrator",
+    closeMenu: "Close menu",
     dashboard: "Dashboard",
+    loading: "Loading...",
     ministryLeader: "Ministry Leader",
     ministries: "Ministries",
+    openMenu: "Open menu",
     organizationSettings: "Organization Settings",
     panel: "Administrative panel",
     pendingAccess: "Access pending",
@@ -51,11 +57,11 @@ export function App() {
   const t = labels[language];
 
   if (isLoading) {
-    return <div className="screen-center">Cargando...</div>;
+    return <div className="screen-center">{t.loading}</div>;
   }
 
   if (!session) {
-    return <Login />;
+    return <Login language={language} />;
   }
 
   if (!profile) {
@@ -88,7 +94,7 @@ export function App() {
             <p className="brand-name">{settings.organization_name}</p>
             <p className="brand-meta">{t.panel}</p>
           </div>
-          <button className="icon-button mobile-only" onClick={() => setSidebarOpen(false)} aria-label="Cerrar menu">
+          <button className="icon-button mobile-only" onClick={() => setSidebarOpen(false)} aria-label={t.closeMenu}>
             <X size={20} />
           </button>
         </div>
@@ -119,7 +125,7 @@ export function App() {
             <Users size={16} />
             <span>{profile.full_name || profile.email}</span>
           </div>
-          <div className="version-label">Version 0.3.4</div>
+          <div className="version-label">Version 0.3.5</div>
           <button className="nav-item" onClick={signOut}>
             <LogOut size={18} />
             <span>{t.signOut}</span>
@@ -129,7 +135,7 @@ export function App() {
 
       <div className="main-panel">
         <header className="topbar">
-          <button className="icon-button desktop-hidden" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
+          <button className="icon-button desktop-hidden" onClick={() => setSidebarOpen(true)} aria-label={t.openMenu}>
             <Menu size={20} />
           </button>
           <div className="topbar-title">
@@ -140,8 +146,9 @@ export function App() {
             </div>
           </div>
           <div className="topbar-actions">
-            <div className="language-toggle" aria-label="Idioma">
+            <div className="language-toggle" aria-label="Language">
               <button className={language === "es" ? "active" : ""} onClick={() => setLanguage("es")} type="button">ES</button>
+              <span>/</span>
               <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")} type="button">EN</button>
             </div>
             <div className="role-badge">{isAdmin ? t.admin : t.ministryLeader}</div>
@@ -151,16 +158,17 @@ export function App() {
         <main className="content">
           {view === "dashboard" && (
             <Dashboard
+              language={language}
               onOpenProfile={(search) => {
                 setProfileQuery(search);
                 setView("profiles");
               }}
             />
           )}
-          {view === "profiles" && <ProfilesPage initialQuery={profileQuery} />}
-          {view === "ministries" && isAdmin && <MinistriesPage />}
-          {view === "users" && isAdmin && <UsersPage />}
-          {view === "organization-settings" && isAdmin && <OrganizationSettingsPage />}
+          {view === "profiles" && <ProfilesPage initialQuery={profileQuery} language={language} />}
+          {view === "ministries" && isAdmin && <MinistriesPage language={language} />}
+          {view === "users" && isAdmin && <UsersPage language={language} />}
+          {view === "organization-settings" && isAdmin && <OrganizationSettingsPage language={language} />}
         </main>
       </div>
     </div>
