@@ -125,12 +125,19 @@ export function MinistriesPage() {
   const deleteMinistry = useMutation({
     mutationFn: async (ministry: DemoMinistry) => {
       if (!isSupabaseConfigured) return;
+      const isUsed = profiles.some((profile) => profile.ministry.split(", ").includes(ministry.name));
+      if (isUsed) throw new Error("No se puede borrar un ministerio con servidores asignados.");
+
+      await supabase.from("user_invitations").delete().eq("ministry_id", ministry.id);
+      await supabase.from("ministry_departments").delete().eq("ministry_id", ministry.id);
       const { error } = await supabase.from("ministries").delete().eq("id", ministry.id);
       if (error) throw error;
     },
     onSuccess: async () => {
       setMessage("Ministerio borrado correctamente.");
       await queryClient.invalidateQueries({ queryKey: ["ministries-page-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
     },
   });
 
@@ -227,6 +234,7 @@ export function MinistriesPage() {
       description: ministry.description || "",
       active: ministry.active,
     });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function confirmDelete(ministry: DemoMinistry) {
@@ -242,6 +250,7 @@ export function MinistriesPage() {
       description: department.description || "",
       active: department.active,
     });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function confirmDeleteDepartment(department: DepartmentRecord) {
@@ -275,7 +284,8 @@ export function MinistriesPage() {
       {error && <div className="alert error">No se pudieron cargar los ministerios.</div>}
       {isLoading && <div className="panel helper-text">Cargando ministerios...</div>}
 
-      <form className="panel catalog-form" onSubmit={submit}>
+      <form className={`panel catalog-form ${form.id ? "editing-form" : ""}`} onSubmit={submit}>
+        {form.id && <strong className="edit-banner">Editando ministerio: {form.name}</strong>}
         <label className="field">
           <span>Ministerio</span>
           <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
@@ -298,7 +308,7 @@ export function MinistriesPage() {
           </button>
         )}
         {saveMinistry.error && <div className="alert error">{saveMinistry.error.message}</div>}
-        {deleteMinistry.error && <div className="alert error">No se pudo borrar. Revisa si hay servidores usando este ministerio.</div>}
+        {deleteMinistry.error && <div className="alert error">{deleteMinistry.error.message || "No se pudo borrar. Revisa si hay servidores usando este ministerio."}</div>}
         {message && <div className="alert success">{message}</div>}
       </form>
 
@@ -306,7 +316,8 @@ export function MinistriesPage() {
         <div className="panel-header">
           <h2>DEPARTAMENTOS</h2>
         </div>
-        <form className="catalog-form" onSubmit={submitDepartment}>
+        <form className={`catalog-form ${departmentForm.id ? "editing-form" : ""}`} onSubmit={submitDepartment}>
+          {departmentForm.id && <strong className="edit-banner">Editando departamento: {departmentForm.name}</strong>}
           <label className="field">
             <span>Ministerio</span>
             <select value={departmentForm.ministry_id} onChange={(event) => setDepartmentForm({ ...departmentForm, ministry_id: event.target.value })}>
@@ -432,8 +443,8 @@ async function fetchMinistriesPageData(): Promise<MinistriesPageData> {
   if (!isSupabaseConfigured) return emptyMinistriesPageData;
 
   const [ministriesResult, departmentsResult, profilesResult, profileMinistriesResult, statusesResult] = await Promise.all([
-    supabase.from("ministries").select("id, name, description, active").order("name"),
-    supabase.from("ministry_departments").select("id, ministry_id, name, description, active").order("name"),
+    supabase.from("ministries").select("id, name, description, active").eq("active", true).order("name"),
+    supabase.from("ministry_departments").select("id, ministry_id, name, description, active").eq("active", true).order("name"),
     supabase.from("server_profiles").select("id, full_name, service_status, service_type, active, ministry_id").order("full_name"),
     supabase.from("server_profile_ministries").select("profile_id, ministry_id"),
     supabase.from("service_status_options").select("id, name, active").order("name"),
