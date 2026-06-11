@@ -7,6 +7,7 @@ import { OrganizationProvider } from "./providers/OrganizationProvider";
 import "./styles.css";
 import "./analytics.css";
 import "./admin.css";
+import "./ui-additions.css";
 
 const queryClient = new QueryClient();
 
