@@ -26,7 +26,9 @@
 .comment-history,
 .comment-form,
 .profile-info-panel,
-.comments-panel {
+.comments-panel,
+.check-list,
+.department-list {
   display: grid;
   gap: 10px;
 }
@@ -62,10 +64,16 @@
   margin-left: -4px;
 }
 
+.danger-link {
+  color: #991b1b;
+}
+
 .quick-results span,
 .birthday-list span,
 .comment-cell span,
-.comment-item span {
+.comment-item span,
+.department-list span,
+.check-list small {
   color: hsl(var(--muted-foreground));
   font-size: 13px;
 }
@@ -98,11 +106,40 @@
 
 .birthday-list div,
 .profile-card,
-.comment-item {
+.comment-item,
+.department-list div {
   border: 1px solid hsl(var(--border));
   border-radius: 8px;
   padding: 10px;
   background: #ffffff;
+}
+
+.department-list div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.check-list {
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.check-list label {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.check-list input {
+  width: auto;
 }
 
 .comment-cell {
@@ -201,12 +238,13 @@
 }
 
 .user-form .alert,
-.user-form .form-note {
+.user-form .form-note,
+.catalog-form .alert {
   grid-column: 1 / -1;
 }
 
 .profile-editor {
-  width: min(100%, 880px);
+  width: min(100%, 980px);
 }
 
 .form-note {
@@ -326,7 +364,8 @@
   .catalog-form,
   .dashboard-kpi-row,
   .dashboard-quick-row,
-  .birthdays-card {
+  .birthdays-card,
+  .department-list div {
     grid-template-columns: 1fr;
   }
 
