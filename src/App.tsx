@@ -27,6 +27,7 @@ const labels = {
     pendingAccessText: "Tu cuenta existe en Google, pero todavia no tiene permisos administrativos en este sistema.",
     profiles: "Servidores",
     signOut: "Cerrar sesion",
+    superAdmin: "Super Administrador",
     users: "Usuarios y Roles",
   },
   en: {
@@ -43,6 +44,7 @@ const labels = {
     pendingAccessText: "Your Google account exists, but it does not have administrative permissions in this system yet.",
     profiles: "Servers",
     signOut: "Sign out",
+    superAdmin: "Super Administrator",
     users: "Users and Roles",
   },
 };
@@ -193,7 +195,7 @@ function translateInterface(language: Language) {
 }
 
 export function App() {
-  const { session, profile, isAdmin, isLoading, signOut } = useAuth();
+  const { session, profile, isAdmin, isSuperAdmin, isLoading, signOut } = useAuth();
   const { settings } = useOrganizationSettings();
   const [view, setView] = useState<View>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -234,7 +236,7 @@ export function App() {
     { id: "profiles" as const, label: t.profiles, icon: Users, visible: true },
     { id: "ministries" as const, label: t.ministries, icon: Building2, visible: isAdmin },
     { id: "users" as const, label: t.users, icon: ShieldCheck, visible: isAdmin },
-    { id: "organization-settings" as const, label: t.organizationSettings, icon: Settings, visible: isAdmin },
+    { id: "organization-settings" as const, label: t.organizationSettings, icon: Settings, visible: isSuperAdmin },
   ];
 
   return (
@@ -277,7 +279,7 @@ export function App() {
             <Users size={16} />
             <span>{profile.full_name || profile.email}</span>
           </div>
-          <div className="version-label">Version 0.3.5</div>
+          <div className="version-label">Version 0.3.6</div>
           <button className="nav-item" onClick={signOut}>
             <LogOut size={18} />
             <span>{t.signOut}</span>
@@ -303,7 +305,7 @@ export function App() {
               <span>/</span>
               <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")} type="button">EN</button>
             </div>
-            <div className="role-badge">{isAdmin ? t.admin : t.ministryLeader}</div>
+            <div className="role-badge">{isSuperAdmin ? t.superAdmin : isAdmin ? t.admin : t.ministryLeader}</div>
           </div>
         </header>
 
@@ -320,7 +322,7 @@ export function App() {
           {view === "profiles" && <ProfilesPage initialQuery={profileQuery} />}
           {view === "ministries" && isAdmin && <MinistriesPage />}
           {view === "users" && isAdmin && <UsersPage />}
-          {view === "organization-settings" && isAdmin && <OrganizationSettingsPage />}
+          {view === "organization-settings" && isSuperAdmin && <OrganizationSettingsPage />}
         </main>
       </div>
     </div>
