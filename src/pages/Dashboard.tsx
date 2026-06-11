@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
-import { Activity, Cake, Clock, Search, UserPlus } from "lucide-react";
+import { Cake, Clock, Search, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { demoMinistries, demoProfiles, demoStatusOptions, type DemoMinistry, type DemoProfile, type DemoStatusOption } from "../data/demoData";
+import { demoMinistries, demoProfiles, type DemoMinistry, type DemoProfile } from "../data/demoData";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useOrganizationSettings } from "../providers/OrganizationProvider";
 
@@ -12,18 +12,19 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
   const { data } = useQuery({
     queryKey: ["dashboard-data"],
     queryFn: fetchDashboardData,
-    initialData: { ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions },
+    initialData: { ministries: demoMinistries, profiles: demoProfiles },
   });
 
   const profiles = data.profiles;
   const ministries = data.ministries;
-  const statuses = data.statuses;
   const total = profiles.length || 1;
   const active = profiles.filter((profile) => profile.service_status === "Activo").length;
   const paused = profiles.filter((profile) => profile.service_status === "Pausado").length;
   const cancelled = profiles.filter((profile) => profile.service_status === "Cancelado").length;
   const ministerial = profiles.filter((profile) => profile.service_type === "Ministerial").length;
   const administrative = profiles.filter((profile) => profile.service_type === "Administrativo").length;
+  const newThisMonth = profiles.filter((profile) => isCurrentMonth(profile.service_start_date)).length;
+  const averageYears = getAverageServiceYears(profiles);
 
   const ministryCounts = ministries.map((ministry) => ({
     name: ministry.name,
@@ -58,6 +59,26 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
           </div>
         </div>
 
+        <section className="dashboard-kpi-row">
+          <article className="analytics-card kpi-card">
+            <Users size={28} />
+            <span>Total servidores</span>
+            <strong>{total}</strong>
+          </article>
+
+          <article className="analytics-card kpi-card">
+            <UserPlus size={28} />
+            <span>Nuevos este mes</span>
+            <strong>{newThisMonth}</strong>
+          </article>
+
+          <article className="analytics-card kpi-card">
+            <Clock size={28} />
+            <span>Antigüedad promedio (años)</span>
+            <strong>{averageYears}</strong>
+          </article>
+        </section>
+
         <section className="dashboard-quick-row">
           <article className="analytics-card quick-search-card">
             <h2>BUSCAR SERVIDOR</h2>
@@ -66,7 +87,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
               <input
                 value={profileSearch}
                 onChange={(event) => setProfileSearch(event.target.value)}
-                placeholder="Nombre, telefono, email o ministerio"
+                placeholder="Nombre, teléfono, email o ministerio"
               />
             </label>
             <div className="quick-results">
@@ -150,7 +171,7 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
           </article>
 
           <article className="analytics-card gauge-card">
-            <h2>PARTICIPACION MINISTERIAL</h2>
+            <h2>PARTICIPACIÓN MINISTERIAL</h2>
             <div className="gauge">
               <div className="gauge-arc" style={{ "--value": `${ministerialPercent}%` } as CSSProperties} />
               <strong>{ministerialPercent}%</strong>
@@ -159,36 +180,11 @@ export function Dashboard({ onOpenProfile }: { onOpenProfile?: (search: string) 
             <div className="legend-row">
               <span><i className="legend-good" /> Bueno</span>
               <span><i className="legend-ok" /> Ok</span>
-              <span><i className="legend-bad" /> Atencion</span>
+              <span><i className="legend-bad" /> Atención</span>
             </div>
-          </article>
-
-          <article className="analytics-card kpi-card">
-            <UserPlus size={28} />
-            <span>Nuevos este mes</span>
-            <strong>2</strong>
-          </article>
-
-          <article className="analytics-card kpi-card">
-            <Clock size={28} />
-            <span>Antiguedad promedio</span>
-            <strong>2.7</strong>
-          </article>
-
-          <article className="analytics-card kpi-card">
-            <Activity size={28} />
-            <span>Indice activo</span>
-            <strong>{activePercent}%</strong>
           </article>
         </div>
       </section>
-
-      <aside className="analytics-filters">
-        <FilterBox title="ESTATUS" items={statuses.map((item) => item.name)} />
-        <FilterBox title="MINISTERIO" items={ministries.map((item) => item.name)} />
-        <FilterBox title="TIPO" items={["Ministerial", "Administrativo"]} />
-        <FilterBox title="Año" items={["2026", "2025", "2024", "2023"]} />
-      </aside>
     </div>
   );
 }
@@ -237,34 +233,56 @@ function getDay(date: string) {
   return Number(date.slice(8, 10));
 }
 
+function isCurrentMonth(date: string) {
+  if (!date) return false;
+  const parsed = new Date(`${date}T00:00:00`);
+  const now = new Date();
+  return parsed.getMonth() === now.getMonth() && parsed.getFullYear() === now.getFullYear();
+}
+
+function getAverageServiceYears(profiles: DemoProfile[]) {
+  const profilesWithStartDate = profiles.filter((profile) => profile.service_start_date);
+  if (!profilesWithStartDate.length) return "0";
+  const totalYears = profilesWithStartDate.reduce((sum, profile) => sum + yearsSince(profile.service_start_date), 0);
+  return (totalYears / profilesWithStartDate.length).toFixed(1);
+}
+
+function yearsSince(date: string) {
+  const start = new Date(`${date}T00:00:00`);
+  const now = new Date();
+  let years = now.getFullYear() - start.getFullYear();
+  const hasNotReachedAnniversary =
+    now.getMonth() < start.getMonth() ||
+    (now.getMonth() === start.getMonth() && now.getDate() < start.getDate());
+  if (hasNotReachedAnniversary) years -= 1;
+  return Math.max(years, 0);
+}
+
 function formatBirthday(date: string) {
   const parsed = new Date(`${date}T00:00:00`);
   return new Intl.DateTimeFormat("es-US", { month: "long", day: "numeric" }).format(parsed);
 }
 
-async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profiles: DemoProfile[]; statuses: DemoStatusOption[] }> {
+async function fetchDashboardData(): Promise<{ ministries: DemoMinistry[]; profiles: DemoProfile[] }> {
   if (!isSupabaseConfigured) {
-    return { ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions };
+    return { ministries: demoMinistries, profiles: demoProfiles };
   }
 
   const [
     { data: ministriesData, error: ministriesError },
     { data: profilesData, error: profilesError },
-    { data: statusesData, error: statusesError },
   ] =
     await Promise.all([
       supabase.from("ministries").select("id, name, description, active").order("name"),
       supabase.from("server_profiles").select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, active, ministries(name), comments(comment, created_at)").order("full_name"),
-      supabase.from("service_status_options").select("id, name, active").eq("active", true).order("name"),
     ]);
 
-  if (ministriesError || profilesError || statusesError) {
-    return { ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions };
+  if (ministriesError || profilesError) {
+    return { ministries: demoMinistries, profiles: demoProfiles };
   }
 
   return {
     ministries: (ministriesData ?? []) as DemoMinistry[],
-    statuses: (statusesData ?? demoStatusOptions) as DemoStatusOption[],
     profiles: (profilesData ?? []).map((profile: any) => ({
       id: profile.id,
       full_name: profile.full_name,
@@ -295,17 +313,6 @@ function MetricBar({ label, value, total }: { label: string; value: number; tota
         <i style={{ width: `${Math.max((value / total) * 100, 5)}%` }} />
       </div>
       <strong>{value}</strong>
-    </div>
-  );
-}
-
-function FilterBox({ title, items }: { title: string; items: string[] }) {
-  return (
-    <div className="filter-box">
-      <h3>{title}</h3>
-      {items.map((item) => (
-        <button key={item}>{item}</button>
-      ))}
     </div>
   );
 }
