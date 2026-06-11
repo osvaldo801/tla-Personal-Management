@@ -1,7 +1,7 @@
 import { Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { demoMinistries, demoProfiles, demoStatusOptions, type DemoMinistry, type DemoProfile, type DemoStatusOption } from "../data/demoData";
+import { demoStatusOptions, type DemoMinistry, type DemoProfile, type DemoStatusOption } from "../data/demoData";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useAuth } from "../providers/AuthProvider";
 
@@ -54,6 +54,13 @@ type ProfileFormState = {
   active: boolean;
 };
 
+type ProfilesPageData = {
+  departments: DepartmentRecord[];
+  ministries: DemoMinistry[];
+  profiles: ProfileRecord[];
+  statuses: DemoStatusOption[];
+};
+
 const emptyProfileForm: ProfileFormState = {
   full_name: "",
   address: "",
@@ -69,6 +76,13 @@ const emptyProfileForm: ProfileFormState = {
   active: true,
 };
 
+const emptyProfilesPageData: ProfilesPageData = {
+  departments: [],
+  ministries: [],
+  profiles: [],
+  statuses: demoStatusOptions,
+};
+
 export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery);
   const [ministry, setMinistry] = useState("Todos");
@@ -79,10 +93,10 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   const { isAdmin, profile: currentUser } = useAuth();
   const canCreateProfile = isAdmin || currentUser?.role === "ministry_leader";
   const queryClient = useQueryClient();
-  const { data } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["profiles-page-data"],
     queryFn: fetchProfilesPageData,
-    initialData: { departments: [] as DepartmentRecord[], ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions },
+    initialData: emptyProfilesPageData,
   });
 
   const profiles = data.profiles;
@@ -153,6 +167,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
     onSuccess: async () => {
       setEditingProfile(null);
       await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
     },
   });
 
@@ -165,6 +180,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
     onSuccess: async () => {
       setDetailId(null);
       await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
     },
   });
 
@@ -347,6 +363,9 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
         </label>
       </section>
 
+      {error && <div className="alert error">No se pudieron cargar los servidores.</div>}
+      {isLoading && <div className="panel helper-text">Cargando servidores...</div>}
+
       <section className="panel table-panel desktop-profile-table">
         <div className="table-scroll">
           <table>
@@ -376,6 +395,11 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
                   statuses={statuses}
                 />
               ))}
+              {!isLoading && filteredProfiles.length === 0 && (
+                <tr>
+                  <td colSpan={9}>No hay servidores para mostrar.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -657,66 +681,70 @@ async function replaceProfileAssignments(profileId: string, ministryIds: string[
   }
 }
 
-async function fetchProfilesPageData(): Promise<{ departments: DepartmentRecord[]; ministries: DemoMinistry[]; profiles: ProfileRecord[]; statuses: DemoStatusOption[] }> {
-  if (!isSupabaseConfigured) {
-    return { departments: [], ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions };
-  }
+async function fetchProfilesPageData(): Promise<ProfilesPageData> {
+  if (!isSupabaseConfigured) return emptyProfilesPageData;
 
   const [
-    { data: ministriesData, error: ministriesError },
-    { data: departmentsData, error: departmentsError },
-    { data: profilesData, error: profilesError },
-    { data: profileMinistriesData, error: profileMinistriesError },
-    { data: profileDepartmentsData, error: profileDepartmentsError },
-    { data: usersData, error: usersError },
-    { data: statusesData, error: statusesError },
+    ministriesResult,
+    departmentsResult,
+    profilesResult,
+    profileMinistriesResult,
+    profileDepartmentsResult,
+    commentsResult,
+    usersResult,
+    statusesResult,
   ] = await Promise.all([
-    supabase.from("ministries").select("id, name, description, active").order("name"),
-    supabase.from("ministry_departments").select("id, ministry_id, name, active, ministries(name)").eq("active", true).order("name"),
+    supabase.from("ministries").select("id, name, description, active").eq("active", true).order("name"),
+    supabase.from("ministry_departments").select("id, ministry_id, name, active").eq("active", true).order("name"),
     supabase
       .from("server_profiles")
-      .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, ministry_id, active, marital_status, emergency_contact_name, emergency_contact_phone, baptism_status, profession_year, membership_since_year, membership_classes, service_availability, skills_talents, service_ministries, ministries(name), comments(id, comment, created_at, user_id)")
+      .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, ministry_id, active, marital_status, emergency_contact_name, emergency_contact_phone, baptism_status, profession_year, membership_since_year, membership_classes, service_availability, skills_talents, service_ministries")
       .order("full_name"),
-    supabase.from("server_profile_ministries").select("profile_id, ministry_id, ministries(name)"),
-    supabase.from("server_profile_departments").select("profile_id, department_id, ministry_departments(name, ministry_id, ministries(name))"),
+    supabase.from("server_profile_ministries").select("profile_id, ministry_id"),
+    supabase.from("server_profile_departments").select("profile_id, department_id"),
+    supabase.from("comments").select("id, profile_id, comment, created_at, user_id").order("created_at", { ascending: false }),
     supabase.from("users").select("id, full_name, email"),
     supabase.from("service_status_options").select("id, name, active").eq("active", true).order("name"),
   ]);
 
-  if (ministriesError || departmentsError || profilesError || profileMinistriesError || profileDepartmentsError || usersError || statusesError) {
-    return { departments: [], ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions };
+  if (ministriesResult.error || profilesResult.error) {
+    console.error("Profiles data error", { ministriesError: ministriesResult.error, profilesError: profilesResult.error });
+    throw ministriesResult.error ?? profilesResult.error;
   }
 
-  const departments = (departmentsData ?? []).map((department: any) => ({
+  const ministries = (ministriesResult.data ?? []) as DemoMinistry[];
+  const ministryById = new Map(ministries.map((ministry) => [ministry.id, ministry.name]));
+  const departments = (departmentsResult.error ? [] : departmentsResult.data ?? []).map((department: any) => ({
     id: department.id,
     ministry_id: department.ministry_id,
-    ministry_name: department.ministries?.name ?? "Sin ministerio",
+    ministry_name: ministryById.get(department.ministry_id) ?? "Sin ministerio",
     name: department.name,
     active: department.active,
   }));
-  const userById = new Map((usersData ?? []).map((user: any) => [user.id, user.full_name || user.email || "Usuario"]));
-  const ministriesByProfile = groupByProfile(profileMinistriesData ?? []);
-  const departmentsByProfile = groupByProfile(profileDepartmentsData ?? []);
+  const departmentById = new Map(departments.map((department) => [department.id, department]));
+  const userById = new Map(
+    (usersResult.error ? [] : usersResult.data ?? []).map((user: any) => [user.id, user.full_name || user.email || "Usuario"]),
+  );
+  const ministriesByProfile = groupByProfile(profileMinistriesResult.error ? [] : profileMinistriesResult.data ?? []);
+  const departmentsByProfile = groupByProfile(profileDepartmentsResult.error ? [] : profileDepartmentsResult.data ?? []);
+  const commentsByProfile = groupByProfile(commentsResult.error ? [] : commentsResult.data ?? []);
 
   return {
     departments,
-    ministries: (ministriesData ?? []) as DemoMinistry[],
-    statuses: (statusesData ?? demoStatusOptions) as DemoStatusOption[],
-    profiles: (profilesData ?? []).map((profile: any) => {
-      const comments = mapComments(profile.comments, userById);
+    ministries,
+    statuses: (statusesResult.error ? demoStatusOptions : statusesResult.data ?? demoStatusOptions) as DemoStatusOption[],
+    profiles: (profilesResult.data ?? []).map((profile: any) => {
       const profileMinistries = ministriesByProfile.get(profile.id) ?? [];
       const profileDepartments = departmentsByProfile.get(profile.id) ?? [];
+      const comments = mapComments(commentsByProfile.get(profile.id), userById);
       const ministryIds = profileMinistries.length
         ? profileMinistries.map((item: any) => item.ministry_id)
         : [profile.ministry_id].filter(Boolean);
-      const ministryNames = profileMinistries.length
-        ? profileMinistries.map((item: any) => item.ministries?.name)
-        : [profile.ministries?.name ?? "Sin ministerio"];
+      const ministryNames = ministryIds.map((ministryId: string) => ministryById.get(ministryId));
       const departmentIds = profileDepartments.map((item: any) => item.department_id).filter(Boolean);
-      const departmentNames = profileDepartments.map((item: any) => {
-        const department = item.ministry_departments;
-        const ministryName = department?.ministries?.name;
-        return department?.name ? `${ministryName ? `${ministryName} - ` : ""}${department.name}` : "";
+      const departmentNames = departmentIds.map((departmentId: string) => {
+        const department = departmentById.get(departmentId);
+        return department ? `${department.ministry_name} - ${department.name}` : "";
       });
 
       return {
@@ -727,14 +755,14 @@ async function fetchProfilesPageData(): Promise<{ departments: DepartmentRecord[
         email: profile.email ?? "",
         birth_date: profile.birth_date ?? "",
         service_start_date: profile.service_start_date ?? "",
-        service_status: profile.service_status,
-        service_type: profile.service_type,
+        service_status: profile.service_status ?? "Activo",
+        service_type: profile.service_type ?? "Ministerial",
         ministry: uniqueNames(ministryNames).join(", ") || "Sin ministerio",
         ministry_id: profile.ministry_id,
         ministry_ids: ministryIds,
         department_ids: departmentIds,
         departments: uniqueNames(departmentNames).join(", "),
-        active: profile.active,
+        active: profile.active ?? true,
         marital_status: profile.marital_status ?? "",
         emergency_contact_name: profile.emergency_contact_name ?? "",
         emergency_contact_phone: profile.emergency_contact_phone ?? "",
@@ -754,9 +782,9 @@ async function fetchProfilesPageData(): Promise<{ departments: DepartmentRecord[
   };
 }
 
-function groupByProfile(rows: any[]) {
+function groupByProfile(rows: any[] | undefined) {
   const grouped = new Map<string, any[]>();
-  rows.forEach((row) => {
+  (rows ?? []).forEach((row) => {
     const current = grouped.get(row.profile_id) ?? [];
     current.push(row);
     grouped.set(row.profile_id, current);
