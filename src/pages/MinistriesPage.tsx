@@ -17,6 +17,30 @@ const emptyMinistryForm: MinistryFormState = {
   active: true,
 };
 
+type DepartmentRecord = {
+  id: string;
+  ministry_id: string;
+  ministry_name: string;
+  name: string;
+  description: string;
+  active: boolean;
+};
+
+type DepartmentFormState = {
+  id?: string;
+  ministry_id: string;
+  name: string;
+  description: string;
+  active: boolean;
+};
+
+const emptyDepartmentForm: DepartmentFormState = {
+  ministry_id: "",
+  name: "",
+  description: "",
+  active: true,
+};
+
 type StatusFormState = {
   id?: string;
   name: string;
@@ -31,25 +55,28 @@ const emptyStatusForm: StatusFormState = {
 export function MinistriesPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<MinistryFormState>(emptyMinistryForm);
+  const [departmentForm, setDepartmentForm] = useState<DepartmentFormState>(emptyDepartmentForm);
   const [statusForm, setStatusForm] = useState<StatusFormState>(emptyStatusForm);
   const [message, setMessage] = useState<string | null>(null);
   const { data } = useQuery({
     queryKey: ["ministries-page-data"],
     queryFn: fetchMinistriesPageData,
-    initialData: { ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions },
+    initialData: { departments: [] as DepartmentRecord[], ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions },
   });
 
   const ministries = data.ministries;
+  const departments = data.departments;
   const profiles = data.profiles;
   const statuses = data.statuses;
+  const departmentsByMinistry = useMemo(() => groupDepartmentsByMinistry(departments), [departments]);
   const counts = useMemo(
     () =>
       new Map(
         ministries.map((ministry) => [
           ministry.name,
           {
-            total: profiles.filter((profile) => profile.ministry === ministry.name).length,
-            active: profiles.filter((profile) => profile.ministry === ministry.name && profile.service_status === "Activo").length,
+            total: profiles.filter((profile) => profile.ministry.split(", ").includes(ministry.name)).length,
+            active: profiles.filter((profile) => profile.ministry.split(", ").includes(ministry.name) && profile.service_status === "Activo").length,
           },
         ]),
       ),
@@ -91,6 +118,42 @@ export function MinistriesPage() {
     },
   });
 
+  const saveDepartment = useMutation({
+    mutationFn: async (payload: DepartmentFormState) => {
+      if (!payload.ministry_id) throw new Error("Selecciona un ministerio.");
+      if (!payload.name.trim()) throw new Error("El departamento es obligatorio.");
+      if (!isSupabaseConfigured) return;
+      const record = {
+        ministry_id: payload.ministry_id,
+        name: payload.name.trim(),
+        description: payload.description.trim() || null,
+        active: payload.active,
+      };
+      const request = payload.id
+        ? supabase.from("ministry_departments").update(record).eq("id", payload.id)
+        : supabase.from("ministry_departments").insert(record);
+      const { error } = await request;
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      setDepartmentForm(emptyDepartmentForm);
+      setMessage("Departamento guardado correctamente.");
+      await queryClient.invalidateQueries({ queryKey: ["ministries-page-data"] });
+    },
+  });
+
+  const deleteDepartment = useMutation({
+    mutationFn: async (department: DepartmentRecord) => {
+      if (!isSupabaseConfigured) return;
+      const { error } = await supabase.from("ministry_departments").delete().eq("id", department.id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      setMessage("Departamento borrado correctamente.");
+      await queryClient.invalidateQueries({ queryKey: ["ministries-page-data"] });
+    },
+  });
+
   const saveStatus = useMutation({
     mutationFn: async (payload: StatusFormState) => {
       if (!payload.name.trim()) throw new Error("El estatus es obligatorio.");
@@ -127,6 +190,12 @@ export function MinistriesPage() {
     saveMinistry.mutate(form);
   }
 
+  function submitDepartment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage(null);
+    saveDepartment.mutate(departmentForm);
+  }
+
   function submitStatus(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
@@ -147,6 +216,21 @@ export function MinistriesPage() {
     if (confirmed) deleteMinistry.mutate(ministry);
   }
 
+  function editDepartment(department: DepartmentRecord) {
+    setDepartmentForm({
+      id: department.id,
+      ministry_id: department.ministry_id,
+      name: department.name,
+      description: department.description || "",
+      active: department.active,
+    });
+  }
+
+  function confirmDeleteDepartment(department: DepartmentRecord) {
+    const confirmed = window.confirm(`Borrar el departamento ${department.name}?`);
+    if (confirmed) deleteDepartment.mutate(department);
+  }
+
   function editStatus(status: DemoStatusOption) {
     setStatusForm({
       id: status.id,
@@ -164,9 +248,9 @@ export function MinistriesPage() {
     <div className="page-stack">
       <section className="page-heading compact">
         <div>
-          <p className="eyebrow">Administracion</p>
+          <p className="eyebrow">Administración</p>
           <h1>MINISTERIOS</h1>
-          <p>Agrega, cambia o borra ministerios.</p>
+          <p>Agrega, cambia o borra ministerios y departamentos.</p>
         </div>
       </section>
 
@@ -176,7 +260,7 @@ export function MinistriesPage() {
           <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
         </label>
         <label className="field">
-          <span>Descripcion</span>
+          <span>Descripción</span>
           <input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
         </label>
         <label className="field checkbox-field">
@@ -197,9 +281,48 @@ export function MinistriesPage() {
         {message && <div className="alert success">{message}</div>}
       </form>
 
+      <section className="panel">
+        <div className="panel-header">
+          <h2>DEPARTAMENTOS</h2>
+        </div>
+        <form className="catalog-form" onSubmit={submitDepartment}>
+          <label className="field">
+            <span>Ministerio</span>
+            <select value={departmentForm.ministry_id} onChange={(event) => setDepartmentForm({ ...departmentForm, ministry_id: event.target.value })}>
+              <option value="">Seleccionar</option>
+              {ministries.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Departamento</span>
+            <input value={departmentForm.name} onChange={(event) => setDepartmentForm({ ...departmentForm, name: event.target.value })} />
+          </label>
+          <label className="field">
+            <span>Descripción</span>
+            <input value={departmentForm.description} onChange={(event) => setDepartmentForm({ ...departmentForm, description: event.target.value })} />
+          </label>
+          <label className="field checkbox-field">
+            <input checked={departmentForm.active} onChange={(event) => setDepartmentForm({ ...departmentForm, active: event.target.checked })} type="checkbox" />
+            <span>Activo</span>
+          </label>
+          <button className="btn btn-primary" disabled={saveDepartment.isPending} type="submit">
+            <Plus size={18} />
+            {departmentForm.id ? "Actualizar" : "Agregar"}
+          </button>
+          {departmentForm.id && (
+            <button className="btn btn-secondary" onClick={() => setDepartmentForm(emptyDepartmentForm)} type="button">
+              Cancelar
+            </button>
+          )}
+          {saveDepartment.error && <div className="alert error">{saveDepartment.error.message}</div>}
+          {deleteDepartment.error && <div className="alert error">No se pudo borrar. Revisa si hay servidores usando este departamento.</div>}
+        </form>
+      </section>
+
       <section className="ministries-grid">
         {ministries.map((ministry) => {
           const count = counts.get(ministry.name) ?? { total: 0, active: 0 };
+          const ministryDepartments = departmentsByMinistry.get(ministry.id) ?? [];
 
           return (
             <article className="panel ministry-card" key={ministry.id}>
@@ -210,6 +333,20 @@ export function MinistriesPage() {
               <div className="ministry-metrics">
                 <span>{count.total} servidores</span>
                 <strong>{count.active} activos</strong>
+              </div>
+              <div className="department-list">
+                {ministryDepartments.length === 0 ? (
+                  <span>Sin departamentos.</span>
+                ) : (
+                  ministryDepartments.map((department) => (
+                    <div key={department.id}>
+                      <strong>{department.name}</strong>
+                      <span>{department.active ? "Activo" : "Inactivo"}</span>
+                      <button className="link-button" onClick={() => editDepartment(department)} type="button">Editar</button>
+                      <button className="link-button danger-link" onClick={() => confirmDeleteDepartment(department)} type="button">Borrar</button>
+                    </div>
+                  ))
+                )}
               </div>
               <div className="row-actions">
                 <button className="btn btn-secondary" onClick={() => editMinistry(ministry)} type="button">
@@ -270,41 +407,86 @@ export function MinistriesPage() {
   );
 }
 
-async function fetchMinistriesPageData(): Promise<{ ministries: DemoMinistry[]; profiles: DemoProfile[]; statuses: DemoStatusOption[] }> {
+async function fetchMinistriesPageData(): Promise<{ departments: DepartmentRecord[]; ministries: DemoMinistry[]; profiles: DemoProfile[]; statuses: DemoStatusOption[] }> {
   if (!isSupabaseConfigured) {
-    return { ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions };
+    return { departments: [], ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions };
   }
 
   const [
     { data: ministriesData, error: ministriesError },
+    { data: departmentsData, error: departmentsError },
     { data: profilesData, error: profilesError },
+    { data: profileMinistriesData, error: profileMinistriesError },
     { data: statusesData, error: statusesError },
   ] =
     await Promise.all([
       supabase.from("ministries").select("id, name, description, active").order("name"),
-      supabase.from("server_profiles").select("id, full_name, service_status, service_type, active, ministries(name)").order("full_name"),
+      supabase.from("ministry_departments").select("id, ministry_id, name, description, active, ministries(name)").order("name"),
+      supabase.from("server_profiles").select("id, full_name, service_status, service_type, active, ministry_id, ministries(name)").order("full_name"),
+      supabase.from("server_profile_ministries").select("profile_id, ministry_id, ministries(name)"),
       supabase.from("service_status_options").select("id, name, active").order("name"),
     ]);
 
-  if (ministriesError || profilesError || statusesError) {
-    return { ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions };
+  if (ministriesError || departmentsError || profilesError || profileMinistriesError || statusesError) {
+    return { departments: [], ministries: demoMinistries, profiles: demoProfiles, statuses: demoStatusOptions };
   }
 
+  const ministriesByProfile = groupByProfile(profileMinistriesData ?? []);
+
   return {
+    departments: (departmentsData ?? []).map((department: any) => ({
+      id: department.id,
+      ministry_id: department.ministry_id,
+      ministry_name: department.ministries?.name ?? "Sin ministerio",
+      name: department.name,
+      description: department.description ?? "",
+      active: department.active,
+    })),
     ministries: (ministriesData ?? []) as DemoMinistry[],
     statuses: (statusesData ?? []) as DemoStatusOption[],
-    profiles: (profilesData ?? []).map((profile: any) => ({
-      id: profile.id,
-      full_name: profile.full_name,
-      address: "",
-      phone: "",
-      email: "",
-      birth_date: "",
-      service_start_date: "",
-      service_status: profile.service_status,
-      service_type: profile.service_type,
-      ministry: profile.ministries?.name ?? "Sin ministerio",
-      active: profile.active,
-    })),
+    profiles: (profilesData ?? []).map((profile: any) => {
+      const profileMinistries = ministriesByProfile.get(profile.id) ?? [];
+      const ministryNames = profileMinistries.length
+        ? profileMinistries.map((item: any) => item.ministries?.name)
+        : [profile.ministries?.name ?? "Sin ministerio"];
+
+      return {
+        id: profile.id,
+        full_name: profile.full_name,
+        address: "",
+        phone: "",
+        email: "",
+        birth_date: "",
+        service_start_date: "",
+        service_status: profile.service_status,
+        service_type: profile.service_type,
+        ministry: uniqueNames(ministryNames).join(", ") || "Sin ministerio",
+        active: profile.active,
+      };
+    }),
   };
+}
+
+function groupDepartmentsByMinistry(departments: DepartmentRecord[]) {
+  const grouped = new Map<string, DepartmentRecord[]>();
+  departments.forEach((department) => {
+    const current = grouped.get(department.ministry_id) ?? [];
+    current.push(department);
+    grouped.set(department.ministry_id, current);
+  });
+  return grouped;
+}
+
+function groupByProfile(rows: any[]) {
+  const grouped = new Map<string, any[]>();
+  rows.forEach((row) => {
+    const current = grouped.get(row.profile_id) ?? [];
+    current.push(row);
+    grouped.set(row.profile_id, current);
+  });
+  return grouped;
+}
+
+function uniqueNames(values: (string | undefined)[]) {
+  return Array.from(new Set(values.filter(Boolean))) as string[];
 }
