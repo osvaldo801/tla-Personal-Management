@@ -1,7 +1,7 @@
 import { Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { demoMinistries, demoProfiles, type DemoMinistry, type DemoProfile } from "../data/demoData";
+import { demoMinistries, demoProfiles, demoStatusOptions, type DemoMinistry, type DemoProfile, type DemoStatusOption } from "../data/demoData";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useAuth } from "../providers/AuthProvider";
 
@@ -25,7 +25,7 @@ type ProfileFormState = {
   email: string;
   birth_date: string;
   service_start_date: string;
-  service_status: DemoProfile["service_status"];
+  service_status: string;
   service_type: DemoProfile["service_type"];
   ministry_id: string;
   active: boolean;
@@ -51,16 +51,18 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [editingProfile, setEditingProfile] = useState<ProfileFormState | null>(null);
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile: currentUser } = useAuth();
+  const canCreateProfile = isAdmin || currentUser?.role === "ministry_leader";
   const queryClient = useQueryClient();
   const { data } = useQuery({
     queryKey: ["profiles-page-data"],
     queryFn: fetchProfilesPageData,
-    initialData: { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[] },
+    initialData: { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions },
   });
 
   const profiles = data.profiles;
   const ministries = data.ministries;
+  const statuses = data.statuses;
   const detailProfile = detailId ? profiles.find((profile) => profile.id === detailId) ?? null : null;
 
   useEffect(() => {
@@ -127,7 +129,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, service_status }: { id: string; service_status: DemoProfile["service_status"] }) => {
+    mutationFn: async ({ id, service_status }: { id: string; service_status: string }) => {
       if (!isSupabaseConfigured) return;
       const { error } = await supabase.from("server_profiles").update({ service_status }).eq("id", id);
       if (error) throw error;
@@ -192,11 +194,11 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
 
         <section className="profile-detail-grid">
           <article className="panel profile-info-panel">
-            <h2>Informacion</h2>
-            <Info label="Telefono" value={detailProfile.phone} />
+            <h2>Información</h2>
+            <Info label="Teléfono" value={detailProfile.phone} />
             <Info label="Email" value={detailProfile.email} />
-            <Info label="Direccion" value={detailProfile.address} />
-            <Info label="Cumpleanos" value={formatDate(detailProfile.birth_date)} />
+            <Info label="Dirección" value={detailProfile.address} />
+            <Info label="Cumpleaños" value={formatDate(detailProfile.birth_date)} />
             <Info label="Inicio de servicio" value={formatDate(detailProfile.service_start_date)} />
             <Info label="Tipo" value={detailProfile.service_type} />
             <Info label="Estado" value={detailProfile.service_status} />
@@ -240,6 +242,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
             onCancel={() => setEditingProfile(null)}
             onChange={setEditingProfile}
             onSubmit={(form) => profileMutation.mutate(form)}
+            statuses={statuses}
           />
         )}
       </div>
@@ -250,11 +253,11 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
     <div className="page-stack">
       <section className="page-heading compact">
         <div>
-          <p className="eyebrow">Gestion</p>
-          <h1>Perfiles</h1>
+          <p className="eyebrow">Gestión</p>
+          <h1>Servidores</h1>
           <p>Lista operativa de servidores y colaboradores.</p>
         </div>
-        {isAdmin && (
+        {canCreateProfile && (
           <button className="btn btn-primary" onClick={() => openEditor()} type="button">
             <Plus size={18} />
             Nuevo servidor
@@ -268,7 +271,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por nombre, email o telefono"
+            placeholder="Buscar por nombre, email o teléfono"
           />
         </label>
 
@@ -285,9 +288,9 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
         <label className="select-field">
           <select value={status} onChange={(event) => setStatus(event.target.value)}>
             <option>Todos</option>
-            <option>Activo</option>
-            <option>Pausado</option>
-            <option>Cancelado</option>
+            {statuses.map((item) => (
+              <option key={item.id}>{item.name}</option>
+            ))}
           </select>
         </label>
       </section>
@@ -301,9 +304,9 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
                 <th>Ministerio</th>
                 <th>Estado</th>
                 <th>Tipo</th>
-                <th>Telefono</th>
+                <th>Teléfono</th>
                 <th>Email</th>
-                <th>Ultimo comentario</th>
+                <th>Último comentario</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -317,6 +320,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
                   onOpen={setDetailId}
                   onStatusChange={(service_status) => updateStatus.mutate({ id: profile.id, service_status })}
                   profile={profile}
+                  statuses={statuses}
                 />
               ))}
             </tbody>
@@ -334,6 +338,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
             onOpen={setDetailId}
             onStatusChange={(service_status) => updateStatus.mutate({ id: profile.id, service_status })}
             profile={profile}
+            statuses={statuses}
           />
         ))}
       </section>
@@ -347,6 +352,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
           onCancel={() => setEditingProfile(null)}
           onChange={setEditingProfile}
           onSubmit={(form) => profileMutation.mutate(form)}
+          statuses={statuses}
         />
       )}
     </div>
@@ -360,13 +366,15 @@ function ProfileRow({
   onOpen,
   onStatusChange,
   profile,
+  statuses,
 }: {
   isAdmin: boolean;
   onDelete: (profile: ProfileRecord) => void;
   onEdit: (profile: ProfileRecord) => void;
   onOpen: (id: string) => void;
-  onStatusChange: (status: DemoProfile["service_status"]) => void;
+  onStatusChange: (status: string) => void;
   profile: ProfileRecord;
+  statuses: DemoStatusOption[];
 }) {
   return (
     <tr>
@@ -391,13 +399,11 @@ function ProfileRow({
       </td>
       <td>
         <div className="row-actions">
-          <select value={profile.service_status} onChange={(event) => onStatusChange(event.target.value as DemoProfile["service_status"])}>
-            <option>Activo</option>
-            <option>Pausado</option>
-            <option>Cancelado</option>
-          </select>
           {isAdmin && (
             <>
+              <select value={profile.service_status} onChange={(event) => onStatusChange(event.target.value)}>
+                {statuses.map((item) => <option key={item.id}>{item.name}</option>)}
+              </select>
               <button className="btn btn-secondary" onClick={() => onEdit(profile)} type="button">Editar</button>
               <button className="btn btn-danger icon-text" onClick={() => onDelete(profile)} type="button">
                 <Trash2 size={15} />
@@ -417,13 +423,15 @@ function ProfileCard({
   onOpen,
   onStatusChange,
   profile,
+  statuses,
 }: {
   isAdmin: boolean;
   onDelete: (profile: ProfileRecord) => void;
   onEdit: (profile: ProfileRecord) => void;
   onOpen: (id: string) => void;
-  onStatusChange: (status: DemoProfile["service_status"]) => void;
+  onStatusChange: (status: string) => void;
   profile: ProfileRecord;
+  statuses: DemoStatusOption[];
 }) {
   return (
     <article className="profile-card">
@@ -441,13 +449,11 @@ function ProfileCard({
         )}
       </div>
       <div className="row-actions">
-        <select value={profile.service_status} onChange={(event) => onStatusChange(event.target.value as DemoProfile["service_status"])}>
-          <option>Activo</option>
-          <option>Pausado</option>
-          <option>Cancelado</option>
-        </select>
         {isAdmin && (
           <>
+            <select value={profile.service_status} onChange={(event) => onStatusChange(event.target.value)}>
+              {statuses.map((item) => <option key={item.id}>{item.name}</option>)}
+            </select>
             <button className="btn btn-secondary" onClick={() => onEdit(profile)} type="button">Editar</button>
             <button className="btn btn-danger" onClick={() => onDelete(profile)} type="button">Borrar</button>
           </>
@@ -465,6 +471,7 @@ function ProfileEditor({
   onCancel,
   onChange,
   onSubmit,
+  statuses,
 }: {
   error?: string;
   form: ProfileFormState;
@@ -473,6 +480,7 @@ function ProfileEditor({
   onCancel: () => void;
   onChange: (form: ProfileFormState) => void;
   onSubmit: (form: ProfileFormState) => void;
+  statuses: DemoStatusOption[];
 }) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -485,10 +493,10 @@ function ProfileEditor({
         <h2>{form.id ? "Editar servidor" : "Nuevo servidor"}</h2>
         <div className="profile-editor-grid">
           <Field label="Nombre completo" value={form.full_name} onChange={(value) => onChange({ ...form, full_name: value })} />
-          <Field label="Telefono" value={form.phone} onChange={(value) => onChange({ ...form, phone: value })} />
+          <Field label="Teléfono" value={form.phone} onChange={(value) => onChange({ ...form, phone: value })} />
           <Field label="Email" type="email" value={form.email} onChange={(value) => onChange({ ...form, email: value })} />
-          <Field label="Direccion" value={form.address} onChange={(value) => onChange({ ...form, address: value })} />
-          <Field label="Cumpleanos" type="date" value={form.birth_date} onChange={(value) => onChange({ ...form, birth_date: value })} />
+          <Field label="Dirección" value={form.address} onChange={(value) => onChange({ ...form, address: value })} />
+          <Field label="Cumpleaños" type="date" value={form.birth_date} onChange={(value) => onChange({ ...form, birth_date: value })} />
           <Field label="Inicio de servicio" type="date" value={form.service_start_date} onChange={(value) => onChange({ ...form, service_start_date: value })} />
           <label className="field">
             <span>Ministerio</span>
@@ -499,10 +507,8 @@ function ProfileEditor({
           </label>
           <label className="field">
             <span>Estado</span>
-            <select value={form.service_status} onChange={(event) => onChange({ ...form, service_status: event.target.value as DemoProfile["service_status"] })}>
-              <option>Activo</option>
-              <option>Pausado</option>
-              <option>Cancelado</option>
+            <select value={form.service_status} onChange={(event) => onChange({ ...form, service_status: event.target.value })}>
+              {statuses.map((item) => <option key={item.id}>{item.name}</option>)}
             </select>
           </label>
           <label className="field">
@@ -545,15 +551,16 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; profiles: ProfileRecord[] }> {
+async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; profiles: ProfileRecord[]; statuses: DemoStatusOption[] }> {
   if (!isSupabaseConfigured) {
-    return { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[] };
+    return { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions };
   }
 
   const [
     { data: ministriesData, error: ministriesError },
     { data: profilesData, error: profilesError },
     { data: usersData, error: usersError },
+    { data: statusesData, error: statusesError },
   ] = await Promise.all([
     supabase.from("ministries").select("id, name, description, active").order("name"),
     supabase
@@ -561,15 +568,17 @@ async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; pr
       .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, ministry_id, active, ministries(name), comments(id, comment, created_at, user_id)")
       .order("full_name"),
     supabase.from("users").select("id, full_name, email"),
+    supabase.from("service_status_options").select("id, name, active").eq("active", true).order("name"),
   ]);
 
-  if (ministriesError || profilesError || usersError) {
-    return { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[] };
+  if (ministriesError || profilesError || usersError || statusesError) {
+    return { ministries: demoMinistries, profiles: demoProfiles as ProfileRecord[], statuses: demoStatusOptions };
   }
   const userById = new Map((usersData ?? []).map((user: any) => [user.id, user.full_name || user.email || "Usuario"]));
 
   return {
     ministries: (ministriesData ?? []) as DemoMinistry[],
+    statuses: (statusesData ?? demoStatusOptions) as DemoStatusOption[],
     profiles: (profilesData ?? []).map((profile: any) => {
       const comments = mapComments(profile.comments, userById);
       return {
