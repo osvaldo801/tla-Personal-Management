@@ -15,6 +15,16 @@ type ProfileComment = {
 type ProfileRecord = DemoProfile & {
   ministry_id?: string | null;
   comments?: ProfileComment[];
+  baptism_status?: string;
+  profession_year?: string;
+  membership_since_year?: string;
+  membership_classes?: string;
+  service_availability?: string;
+  skills_talents?: string;
+  service_ministries?: string;
+  marital_status?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
 };
 
 type ProfileFormState = {
@@ -202,6 +212,15 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
             <Info label="Inicio de servicio" value={formatDate(detailProfile.service_start_date)} />
             <Info label="Tipo" value={detailProfile.service_type} />
             <Info label="Estado" value={detailProfile.service_status} />
+            <Info label="Estado civil" value={detailProfile.marital_status ?? ""} />
+            <Info label="Contacto de emergencia" value={formatEmergencyContact(detailProfile)} />
+            <Info label="Bautizado" value={detailProfile.baptism_status ?? ""} />
+            <Info label="Año profesión de fe" value={detailProfile.profession_year ?? ""} />
+            <Info label="Año en Taber LA" value={detailProfile.membership_since_year ?? ""} />
+            <Info label="Clases de membresía" value={formatMultiline(detailProfile.membership_classes)} />
+            <Info label="Disponibilidad" value={formatMultiline(detailProfile.service_availability)} />
+            <Info label="Habilidades o talentos" value={detailProfile.skills_talents ?? ""} />
+            <Info label="Ministerios de servicio" value={formatMultiline(detailProfile.service_ministries)} />
           </article>
 
           <article className="panel comments-panel">
@@ -565,7 +584,7 @@ async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; pr
     supabase.from("ministries").select("id, name, description, active").order("name"),
     supabase
       .from("server_profiles")
-      .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, ministry_id, active, ministries(name), comments(id, comment, created_at, user_id)")
+      .select("id, full_name, address, phone, email, birth_date, service_start_date, service_status, service_type, ministry_id, active, marital_status, emergency_contact_name, emergency_contact_phone, baptism_status, profession_year, membership_since_year, membership_classes, service_availability, skills_talents, service_ministries, ministries(name), comments(id, comment, created_at, user_id)")
       .order("full_name"),
     supabase.from("users").select("id, full_name, email"),
     supabase.from("service_status_options").select("id, name, active").eq("active", true).order("name"),
@@ -594,6 +613,16 @@ async function fetchProfilesPageData(): Promise<{ ministries: DemoMinistry[]; pr
         ministry: profile.ministries?.name ?? "Sin ministerio",
         ministry_id: profile.ministry_id,
         active: profile.active,
+        marital_status: profile.marital_status ?? "",
+        emergency_contact_name: profile.emergency_contact_name ?? "",
+        emergency_contact_phone: profile.emergency_contact_phone ?? "",
+        baptism_status: profile.baptism_status ?? "",
+        profession_year: profile.profession_year ?? "",
+        membership_since_year: profile.membership_since_year ?? "",
+        membership_classes: profile.membership_classes ?? "",
+        service_availability: profile.service_availability ?? "",
+        skills_talents: profile.skills_talents ?? "",
+        service_ministries: profile.service_ministries ?? "",
         comments,
         last_comment: comments[0]?.comment ?? "",
         last_comment_author: comments[0]?.author ?? "",
@@ -637,6 +666,14 @@ function toFormState(profile: ProfileRecord): ProfileFormState {
 function formatDate(value: string) {
   if (!value) return "";
   return new Intl.DateTimeFormat("es-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00`));
+}
+
+function formatMultiline(value: string | undefined) {
+  return value?.replace(/\n/g, ", ") ?? "";
+}
+
+function formatEmergencyContact(profile: ProfileRecord) {
+  return [profile.emergency_contact_name, profile.emergency_contact_phone].filter(Boolean).join(" - ");
 }
 
 function formatDateTime(value: string | undefined) {
