@@ -5,11 +5,13 @@ import { demoMinistries, type DemoMinistry } from "../data/demoData";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useAuth } from "../providers/AuthProvider";
 
+type ManagedRole = "super_admin" | "admin" | "ministry_leader";
+
 type ManagedUser = {
   id: string;
   full_name: string | null;
   email: string;
-  role: "admin" | "ministry_leader";
+  role: ManagedRole;
   ministry_id: string | null;
   created_at: string;
   access_status: "active" | "pending";
@@ -19,7 +21,7 @@ type ManagedUser = {
 type UserFormState = {
   full_name: string;
   email: string;
-  role: "admin" | "ministry_leader";
+  role: ManagedRole;
   ministry_id: string;
 };
 
@@ -45,7 +47,7 @@ export function UsersPage() {
   const [form, setForm] = useState(defaultForm);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const { authUser } = useAuth();
+  const { authUser, isSuperAdmin } = useAuth();
   const { data } = useQuery({
     queryKey: ["admin-users-page"],
     queryFn: fetchUsersPageData,
@@ -55,7 +57,7 @@ export function UsersPage() {
           id: "demo-admin",
           full_name: "Osvaldo Vasquez",
           email: "osvaldo801@gmail.com",
-          role: "admin" as const,
+          role: "super_admin" as const,
           ministry_id: null,
           created_at: new Date().toISOString(),
           access_status: "active" as const,
@@ -74,6 +76,7 @@ export function UsersPage() {
     mutationFn: async (payload: UserFormState): Promise<InvitationResult> => {
       if (!payload.email.trim()) throw new Error("El email es obligatorio.");
       if (!payload.full_name.trim()) throw new Error("El nombre es obligatorio.");
+      if (payload.role === "super_admin" && !isSuperAdmin) throw new Error("Solo un super administrador puede asignar ese rol.");
 
       if (!isSupabaseConfigured) return;
 
@@ -205,7 +208,8 @@ export function UsersPage() {
         </label>
         <label className="field">
           <span>Rol</span>
-          <select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value as UserFormState["role"] })}>
+          <select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value as ManagedRole })}>
+            {isSuperAdmin && <option value="super_admin">Super Administrador</option>}
             <option value="admin">Administrador</option>
             <option value="ministry_leader">Lider de Ministerio</option>
           </select>
@@ -254,7 +258,7 @@ export function UsersPage() {
                     <strong>{user.full_name || user.email}</strong>
                     <span>{user.email}</span>
                   </td>
-                  <td>{user.role === "admin" ? "Administrador" : "Lider de Ministerio"}</td>
+                  <td>{getRoleLabel(user.role)}</td>
                   <td>{user.ministry_id ? ministryById.get(user.ministry_id) || "Asignado" : "Global"}</td>
                   <td>
                     <span className={`status-pill ${user.access_status === "active" ? "status-activo" : "status-pausado"}`}>
@@ -296,7 +300,7 @@ async function fetchUsersPageData(): Promise<{ users: ManagedUser[]; ministries:
           id: "demo-admin",
           full_name: "Osvaldo Vasquez",
           email: "osvaldo801@gmail.com",
-          role: "admin",
+          role: "super_admin",
           ministry_id: null,
           created_at: new Date().toISOString(),
           access_status: "active",
@@ -327,6 +331,7 @@ async function fetchUsersPageData(): Promise<{ users: ManagedUser[]; ministries:
     const invitation = invitationByEmail.get(user.email);
     return {
       ...user,
+      role: normalizeRole(user.role),
       access_status: "active" as const,
       invitation_token: invitation?.token,
     };
@@ -338,7 +343,7 @@ async function fetchUsersPageData(): Promise<{ users: ManagedUser[]; ministries:
       id: invitation.id,
       full_name: invitation.full_name,
       email: invitation.email,
-      role: invitation.role,
+      role: normalizeRole(invitation.role),
       ministry_id: invitation.ministry_id,
       created_at: invitation.created_at,
       access_status: "pending" as const,
@@ -349,6 +354,17 @@ async function fetchUsersPageData(): Promise<{ users: ManagedUser[]; ministries:
     users: [...pendingUsers, ...activeUsers] as ManagedUser[],
     ministries: (ministries ?? []) as DemoMinistry[],
   };
+}
+
+function normalizeRole(role: string): ManagedRole {
+  if (role === "super_admin" || role === "admin") return role;
+  return "ministry_leader";
+}
+
+function getRoleLabel(role: ManagedRole) {
+  if (role === "super_admin") return "Super Administrador";
+  if (role === "admin") return "Administrador";
+  return "Lider de Ministerio";
 }
 
 function buildInviteLink(token: string) {
