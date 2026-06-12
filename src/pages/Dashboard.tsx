@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Cake, Clock, Search, UserPlus, Users } from "lucide-react";
+import { Cake, Search, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Language } from "../App";
@@ -14,15 +14,16 @@ const emptyDashboardData: DashboardData = { ministries: [], profiles: [] };
 const copy = {
   es: {
     active: "Activos",
-    averageYears: "Antiguedad promedio (anos)",
     birthdays: "Cumpleanos",
     currentMonth: "Este mes",
     dashboard: "Dashboard principal",
     ministryDataEmpty: "Sin datos ministeriales.",
     ministryServers: "SERVIDORES POR MINISTERIO",
     newThisMonth: "Nuevos este mes",
+    newThisMonthList: "Servidores nuevos este mes",
     nextMonth: "Mes siguiente",
     noBirthdays: "Sin cumpleanos registrados.",
+    noNewServers: "No hay servidores nuevos este mes.",
     noServers: "No hay servidores para mostrar.",
     paused: "Pausados",
     searchPlaceholder: "Nombre, telefono, email o ministerio",
@@ -32,15 +33,16 @@ const copy = {
   },
   en: {
     active: "Active",
-    averageYears: "Average seniority (years)",
     birthdays: "Birthdays",
     currentMonth: "This month",
     dashboard: "Main dashboard",
     ministryDataEmpty: "No ministry data.",
     ministryServers: "SERVERS BY MINISTRY",
     newThisMonth: "New this month",
+    newThisMonthList: "New servers this month",
     nextMonth: "Next month",
     noBirthdays: "No birthdays registered.",
+    noNewServers: "No new servers this month.",
     noServers: "No servers to show.",
     paused: "Paused",
     searchPlaceholder: "Name, phone, email or ministry",
@@ -53,6 +55,7 @@ const copy = {
 export function Dashboard({ language = "es", onOpenProfile }: { language?: Language; onOpenProfile?: (search: string) => void }) {
   const { settings } = useOrganizationSettings();
   const [profileSearch, setProfileSearch] = useState("");
+  const [showNewThisMonth, setShowNewThisMonth] = useState(false);
   const t = copy[language];
   const { data } = useQuery({
     queryKey: ["dashboard-data"],
@@ -68,8 +71,10 @@ export function Dashboard({ language = "es", onOpenProfile }: { language?: Langu
   const paused = profiles.filter((profile) => profile.service_status === "Pausado").length;
   const ministerial = profiles.filter((profile) => profile.service_type === "Ministerial").length;
   const administrative = profiles.filter((profile) => profile.service_type === "Administrativo").length;
-  const newThisMonth = profiles.filter((profile) => isCurrentMonth(profile.service_start_date)).length;
-  const averageYears = getAverageServiceYears(profiles);
+  const newProfilesThisMonth = profiles
+    .filter((profile) => isCurrentMonth(profile.service_start_date))
+    .sort((a, b) => b.service_start_date.localeCompare(a.service_start_date) || a.full_name.localeCompare(b.full_name));
+  const newThisMonth = newProfilesThisMonth.length;
 
   const ministryCounts = ministries
     .map((ministry) => ({
@@ -106,25 +111,37 @@ export function Dashboard({ language = "es", onOpenProfile }: { language?: Langu
           </div>
         </div>
 
-        <section className="dashboard-kpi-row">
-          <article className="analytics-card kpi-card">
+        <section className="dashboard-kpi-row two-up">
+          <button className="analytics-card kpi-card kpi-button" onClick={() => onOpenProfile?.("")} type="button">
             <Users size={28} />
             <span>{t.totalServers}</span>
             <strong>{totalProfiles}</strong>
-          </article>
+          </button>
 
-          <article className="analytics-card kpi-card">
+          <button className="analytics-card kpi-card kpi-button" onClick={() => setShowNewThisMonth((current) => !current)} type="button">
             <UserPlus size={28} />
             <span>{t.newThisMonth}</span>
             <strong>{newThisMonth}</strong>
-          </article>
-
-          <article className="analytics-card kpi-card">
-            <Clock size={28} />
-            <span>{t.averageYears}</span>
-            <strong>{averageYears}</strong>
-          </article>
+          </button>
         </section>
+
+        {showNewThisMonth && (
+          <section className="analytics-card new-servers-panel">
+            <h2>{t.newThisMonthList}</h2>
+            <div className="quick-results">
+              {newProfilesThisMonth.length === 0 ? (
+                <p className="helper-text">{t.noNewServers}</p>
+              ) : (
+                newProfilesThisMonth.map((profile) => (
+                  <button className="quick-result-button" key={profile.id} onClick={() => onOpenProfile?.(profile.full_name)} type="button">
+                    <strong>{profile.full_name}</strong>
+                    <span>{formatDate(profile.service_start_date)} - {profile.ministry}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="dashboard-quick-row">
           <article className="analytics-card quick-search-card">
@@ -259,27 +276,15 @@ function isCurrentMonth(date: string) {
   return parsed.getMonth() === now.getMonth() && parsed.getFullYear() === now.getFullYear();
 }
 
-function getAverageServiceYears(profiles: DemoProfile[]) {
-  const profilesWithStartDate = profiles.filter((profile) => profile.service_start_date);
-  if (!profilesWithStartDate.length) return "0";
-  const totalYears = profilesWithStartDate.reduce((sum, profile) => sum + yearsSince(profile.service_start_date), 0);
-  return (totalYears / profilesWithStartDate.length).toFixed(1);
-}
-
-function yearsSince(date: string) {
-  const start = new Date(`${date}T00:00:00`);
-  const now = new Date();
-  let years = now.getFullYear() - start.getFullYear();
-  const hasNotReachedAnniversary =
-    now.getMonth() < start.getMonth() ||
-    (now.getMonth() === start.getMonth() && now.getDate() < start.getDate());
-  if (hasNotReachedAnniversary) years -= 1;
-  return Math.max(years, 0);
-}
-
 function formatBirthday(date: string) {
   const parsed = new Date(`${date}T00:00:00`);
   return new Intl.DateTimeFormat("es-US", { month: "long", day: "numeric" }).format(parsed);
+}
+
+function formatDate(date: string) {
+  if (!date) return "Sin fecha";
+  const parsed = new Date(`${date}T00:00:00`);
+  return new Intl.DateTimeFormat("es-US", { month: "long", day: "numeric", year: "numeric" }).format(parsed);
 }
 
 async function fetchDashboardData(): Promise<DashboardData> {
