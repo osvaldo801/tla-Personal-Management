@@ -58,6 +58,12 @@
   border: 1px solid #86efac;
 }
 
+.participant-badge.leader {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
 .participant-badge.collaborator {
   background: #f1f5f9;
   color: #475569;
@@ -70,6 +76,19 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 10px;
+}
+
+.comment-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.comment-item textarea {
+  width: 100%;
+  resize: vertical;
 }
 
 .editing-form {
