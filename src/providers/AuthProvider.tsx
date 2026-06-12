@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       authUser: session?.user ?? null,
       profile,
-      isAdmin: profile?.role === "super_admin" || profile?.role === "admin",
+      isAdmin: profile?.role === "super_admin" || profile?.role === "admin" || profile?.role === "ministry_leader",
       isSuperAdmin: profile?.role === "super_admin",
       isLoading,
       signInWithGoogle: async () => {
