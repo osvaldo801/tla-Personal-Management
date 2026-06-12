@@ -38,6 +38,28 @@
   color: hsl(var(--primary-foreground));
 }
 
+.dashboard-kpi-row.two-up {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.kpi-button {
+  width: 100%;
+  border: 1px solid hsl(var(--border));
+  text-align: center;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.kpi-button:hover {
+  transform: translateY(-1px);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 12px 24px rgb(15 23 42 / 8%);
+}
+
+.new-servers-panel {
+  margin-top: 12px;
+}
+
 .participant-badge {
   width: max-content;
   display: inline-flex;
@@ -91,6 +113,12 @@
   resize: vertical;
 }
 
+.role-ministry_leader .comments-panel .comment-actions,
+.role-ministry_leader .btn-danger,
+.role-ministry_leader .icon-text {
+  display: none !important;
+}
+
 .editing-form {
   border-color: #0f766e;
   box-shadow: 0 0 0 2px rgb(15 118 110 / 10%);
@@ -100,6 +128,12 @@
   display: block;
   color: #0f766e;
   font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-kpi-row.two-up {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
