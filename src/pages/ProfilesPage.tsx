@@ -5,7 +5,7 @@ import { demoStatusOptions, type DemoMinistry, type DemoProfile, type DemoStatus
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { useAuth } from "../providers/AuthProvider";
 
-type ParticipantType = "Servidor" | "Colaborador";
+type ParticipantType = "Servidor" | "Colaborador" | "Lider";
 
 type ProfileComment = {
   id: string;
@@ -94,6 +94,8 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   const [status, setStatus] = useState("Todos");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
   const [editingProfile, setEditingProfile] = useState<ProfileFormState | null>(null);
   const { isAdmin, profile: currentUser } = useAuth();
   const canCreateProfile = isAdmin || currentUser?.role === "ministry_leader";
@@ -219,6 +221,33 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
     },
   });
 
+  const updateComment = useMutation({
+    mutationFn: async ({ id, comment }: { id: string; comment: string }) => {
+      if (!comment.trim()) throw new Error("El comentario no puede estar vacio.");
+      if (!isSupabaseConfigured) return;
+      const { error } = await supabase.from("comments").update({ comment: comment.trim() }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      setEditingCommentId(null);
+      setEditingCommentText("");
+      await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
+    },
+  });
+
+  const deleteComment = useMutation({
+    mutationFn: async (id: string) => {
+      if (!isSupabaseConfigured) return;
+      const { error } = await supabase.from("comments").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      setEditingCommentId(null);
+      setEditingCommentText("");
+      await queryClient.invalidateQueries({ queryKey: ["profiles-page-data"] });
+    },
+  });
+
   function openEditor(profile?: ProfileRecord) {
     setEditingProfile(profile ? toFormState(profile) : emptyProfileForm);
   }
@@ -226,6 +255,16 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   function confirmDelete(profile: ProfileRecord) {
     const confirmed = window.confirm(`Borrar el perfil de ${profile.full_name}?`);
     if (confirmed) deleteProfile.mutate(profile.id);
+  }
+
+  function startEditingComment(item: ProfileComment) {
+    setEditingCommentId(item.id);
+    setEditingCommentText(item.comment);
+  }
+
+  function confirmDeleteComment(item: ProfileComment) {
+    const confirmed = window.confirm("Borrar este comentario?");
+    if (confirmed) deleteComment.mutate(item.id);
   }
 
   if (detailProfile) {
@@ -300,13 +339,47 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
               {detailProfile.comments?.length ? (
                 detailProfile.comments.map((item) => (
                   <div className="comment-item" key={item.id}>
-                    <p>{item.comment}</p>
-                    <span>{item.author} - {formatDateTime(item.created_at)}</span>
+                    {editingCommentId === item.id ? (
+                      <>
+                        <textarea value={editingCommentText} onChange={(event) => setEditingCommentText(event.target.value)} rows={3} />
+                        <div className="comment-actions">
+                          <button
+                            className="btn btn-primary"
+                            disabled={updateComment.isPending}
+                            onClick={() => updateComment.mutate({ id: item.id, comment: editingCommentText })}
+                            type="button"
+                          >
+                            Guardar
+                          </button>
+                          <button className="btn btn-secondary" onClick={() => setEditingCommentId(null)} type="button">
+                            Cancelar
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p>{item.comment}</p>
+                        <span>{item.author} - {formatDateTime(item.created_at)}</span>
+                        {isAdmin && (
+                          <div className="comment-actions">
+                            <button className="btn btn-secondary" onClick={() => startEditingComment(item)} type="button">
+                              Editar
+                            </button>
+                            <button className="btn btn-danger" onClick={() => confirmDeleteComment(item)} type="button">
+                              <Trash2 size={15} />
+                              Borrar
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 ))
               ) : (
                 <p className="helper-text">Sin comentarios.</p>
               )}
+              {updateComment.error && <div className="alert error">{updateComment.error.message}</div>}
+              {deleteComment.error && <div className="alert error">No se pudo borrar el comentario.</div>}
             </div>
           </article>
         </section>
@@ -600,6 +673,7 @@ function ProfileEditor({
             <span>Clasificación</span>
             <select value={form.participant_type} onChange={(event) => onChange({ ...form, participant_type: event.target.value as ParticipantType })}>
               <option>Servidor</option>
+              <option>Lider</option>
               <option>Colaborador</option>
             </select>
           </label>
@@ -666,7 +740,8 @@ function ProfileEditor({
 }
 
 function ParticipantBadge({ value }: { value: ParticipantType }) {
-  return <span className={`participant-badge ${value === "Servidor" ? "server" : "collaborator"}`}>{value}</span>;
+  const className = value === "Servidor" ? "server" : value === "Lider" ? "leader" : "collaborator";
+  return <span className={`participant-badge ${className}`}>{value}</span>;
 }
 
 function Field({ label, onChange, type = "text", value }: { label: string; onChange: (value: string) => void; type?: string; value: string }) {
@@ -782,7 +857,7 @@ async function fetchProfilesPageData(): Promise<ProfilesPageData> {
         service_start_date: profile.service_start_date ?? "",
         service_status: profile.service_status ?? "Activo",
         service_type: profile.service_type ?? "Ministerial",
-        participant_type: profile.participant_type === "Colaborador" ? "Colaborador" : "Servidor",
+        participant_type: normalizeParticipantType(profile.participant_type),
         ministry: uniqueNames(ministryNames).join(", ") || "Sin ministerio",
         ministry_id: profile.ministry_id,
         ministry_ids: ministryIds,
@@ -869,6 +944,11 @@ function toggleDepartment(form: ProfileFormState, departmentId: string) {
       ? form.department_ids.filter((item) => item !== departmentId)
       : [...form.department_ids, departmentId],
   };
+}
+
+function normalizeParticipantType(value: string | null | undefined): ParticipantType {
+  if (value === "Lider" || value === "Colaborador") return value;
+  return "Servidor";
 }
 
 function uniqueNames(values: (string | undefined)[]) {
