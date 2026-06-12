@@ -57,11 +57,9 @@ const interfaceTranslations: Record<string, { es: string; en: string }> = {
   "Administracion": { es: "Administracion", en: "Administration" },
   "Administración": { es: "Administración", en: "Administration" },
   "Agregar": { es: "Agregar", en: "Add" },
-  "Agrega, cambia o borra ministerios y departamentos.": { es: "Agrega, cambia o borra ministerios y departamentos.", en: "Add, update or delete ministries and departments." },
   "Borrar": { es: "Borrar", en: "Delete" },
   "BUSCAR SERVIDOR": { es: "BUSCAR SERVIDOR", en: "SEARCH SERVER" },
   "Cancelar": { es: "Cancelar", en: "Cancel" },
-  "Cancelar edicion": { es: "Cancelar edicion", en: "Cancel editing" },
   "Clasificación": { es: "Clasificación", en: "Classification" },
   "CLASIFICACIÓN": { es: "CLASIFICACIÓN", en: "CLASSIFICATION" },
   "Comentarios": { es: "Comentarios", en: "Comments" },
@@ -73,7 +71,6 @@ const interfaceTranslations: Record<string, { es: string; en: string }> = {
   "Departamento": { es: "Departamento", en: "Department" },
   "DEPARTAMENTO": { es: "DEPARTAMENTO", en: "DEPARTMENT" },
   "Departamentos": { es: "Departamentos", en: "Departments" },
-  "Descripcion": { es: "Descripcion", en: "Description" },
   "Descripción": { es: "Descripción", en: "Description" },
   "Dirección": { es: "Dirección", en: "Address" },
   "Editar": { es: "Editar", en: "Edit" },
@@ -86,14 +83,11 @@ const interfaceTranslations: Record<string, { es: string; en: string }> = {
   "Estado civil": { es: "Estado civil", en: "Marital status" },
   "ESTATUS": { es: "ESTATUS", en: "STATUS" },
   "Ficha del servidor": { es: "Ficha del servidor", en: "Server profile" },
-  "Gestion": { es: "Gestion", en: "Management" },
   "Gestión": { es: "Gestión", en: "Management" },
   "Guardar": { es: "Guardar", en: "Save" },
   "Guardar cambios": { es: "Guardar cambios", en: "Save changes" },
   "Guardar comentario": { es: "Guardar comentario", en: "Save comment" },
   "Guardando...": { es: "Guardando...", en: "Saving..." },
-  "Habilidades o talentos": { es: "Habilidades o talentos", en: "Skills or talents" },
-  "Informacion": { es: "Informacion", en: "Information" },
   "Información": { es: "Información", en: "Information" },
   "Informacion general": { es: "Informacion general", en: "General information" },
   "Inicio de servicio": { es: "Inicio de servicio", en: "Service start" },
@@ -102,16 +96,13 @@ const interfaceTranslations: Record<string, { es: string; en: string }> = {
   "Ministerio": { es: "Ministerio", en: "Ministry" },
   "MINISTERIO": { es: "MINISTERIO", en: "MINISTRY" },
   "Ministerios": { es: "Ministerios", en: "Ministries" },
-  "Ministerios de servicio": { es: "Ministerios de servicio", en: "Service ministries" },
   "Nombre": { es: "Nombre", en: "Name" },
   "NOMBRE": { es: "NOMBRE", en: "NAME" },
   "Nombre completo": { es: "Nombre completo", en: "Full name" },
-  "Nombre de iglesia/empresa": { es: "Nombre de iglesia/empresa", en: "Church/company name" },
   "Nuevo servidor": { es: "Nuevo servidor", en: "New server" },
   "No hay servidores para mostrar.": { es: "No hay servidores para mostrar.", en: "No servers to show." },
   "No registrado": { es: "No registrado", en: "Not registered" },
   "Perfil activo": { es: "Perfil activo", en: "Active profile" },
-  "Personaliza la informacion institucional usada en todo el sistema.": { es: "Personaliza la informacion institucional usada en todo el sistema.", en: "Customize the institutional information used across the system." },
   "Rol": { es: "Rol", en: "Role" },
   "SERVIDORES": { es: "SERVIDORES", en: "SERVERS" },
   "Sin comentarios": { es: "Sin comentarios", en: "No comments" },
@@ -120,9 +111,6 @@ const interfaceTranslations: Record<string, { es: string; en: string }> = {
   "Sin departamentos.": { es: "Sin departamentos.", en: "No departments." },
   "Sin ministerio": { es: "Sin ministerio", en: "No ministry" },
   "Sitio web": { es: "Sitio web", en: "Website" },
-  "Solo podran acceder por invitacion. Al crear un usuario se envia un email y el rol por defecto es Lider de Ministerio.": { es: "Solo podran acceder por invitacion. Al crear un usuario se envia un email y el rol por defecto es Lider de Ministerio.", en: "Access is invitation-only. Creating a user sends an email and the default role is Ministry Leader." },
-  "Subir o reemplazar logo": { es: "Subir o reemplazar logo", en: "Upload or replace logo" },
-  "Telefono": { es: "Telefono", en: "Phone" },
   "Teléfono": { es: "Teléfono", en: "Phone" },
   "TELÉFONO": { es: "TELÉFONO", en: "PHONE" },
   "Tipo": { es: "Tipo", en: "Type" },
@@ -131,7 +119,6 @@ const interfaceTranslations: Record<string, { es: string; en: string }> = {
   "ÚLTIMO COMENTARIO": { es: "ÚLTIMO COMENTARIO", en: "LAST COMMENT" },
   "Usuario": { es: "Usuario", en: "User" },
   "Usuarios y Roles": { es: "Usuarios y Roles", en: "Users and Roles" },
-  "Vista previa del logo institucional": { es: "Vista previa del logo institucional", en: "Institutional logo preview" },
   "Volver": { es: "Volver", en: "Back" },
 };
 
@@ -202,6 +189,7 @@ export function App() {
   const [profileQuery, setProfileQuery] = useState("");
   const [language, setLanguage] = useState<Language>("es");
   const t = labels[language];
+  const isSystemAdmin = profile?.role === "super_admin" || profile?.role === "admin";
 
   useEffect(() => {
     const apply = translateInterface(language);
@@ -234,13 +222,13 @@ export function App() {
   const nav = [
     { id: "dashboard" as const, label: t.dashboard, icon: LayoutDashboard, visible: true },
     { id: "profiles" as const, label: t.profiles, icon: Users, visible: true },
-    { id: "ministries" as const, label: t.ministries, icon: Building2, visible: isAdmin },
-    { id: "users" as const, label: t.users, icon: ShieldCheck, visible: isAdmin },
+    { id: "ministries" as const, label: t.ministries, icon: Building2, visible: isSystemAdmin },
+    { id: "users" as const, label: t.users, icon: ShieldCheck, visible: isSystemAdmin },
     { id: "organization-settings" as const, label: t.organizationSettings, icon: Settings, visible: isSuperAdmin },
   ];
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell role-${profile.role}`}>
       <aside className={`sidebar ${sidebarOpen ? "is-open" : ""}`}>
         <div className="brand-block">
           <img src={settings.logo_url} alt={settings.organization_name} className="brand-logo" />
@@ -279,7 +267,7 @@ export function App() {
             <Users size={16} />
             <span>{profile.full_name || profile.email}</span>
           </div>
-          <div className="version-label">Version 0.3.6</div>
+          <div className="version-label">Version 0.3.7</div>
           <button className="nav-item" onClick={signOut}>
             <LogOut size={18} />
             <span>{t.signOut}</span>
@@ -305,7 +293,7 @@ export function App() {
               <span>/</span>
               <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")} type="button">EN</button>
             </div>
-            <div className="role-badge">{isSuperAdmin ? t.superAdmin : isAdmin ? t.admin : t.ministryLeader}</div>
+            <div className="role-badge">{isSuperAdmin ? t.superAdmin : isSystemAdmin ? t.admin : t.ministryLeader}</div>
           </div>
         </header>
 
@@ -320,8 +308,8 @@ export function App() {
             />
           )}
           {view === "profiles" && <ProfilesPage initialQuery={profileQuery} />}
-          {view === "ministries" && isAdmin && <MinistriesPage />}
-          {view === "users" && isAdmin && <UsersPage />}
+          {view === "ministries" && isSystemAdmin && <MinistriesPage />}
+          {view === "users" && isSystemAdmin && <UsersPage />}
           {view === "organization-settings" && isSuperAdmin && <OrganizationSettingsPage />}
         </main>
       </div>
