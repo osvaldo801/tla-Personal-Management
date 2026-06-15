@@ -88,8 +88,12 @@ const emptyProfilesPageData: ProfilesPageData = {
   statuses: demoStatusOptions,
 };
 
+const participantOptions: ParticipantType[] = ["Servidor", "Lider", "Colaborador"];
+
 export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery);
+  const [classFilter, setClassFilter] = useState("Todos");
+  const [typeFilter, setTypeFilter] = useState("Todos");
   const [ministry, setMinistry] = useState("Todos");
   const [status, setStatus] = useState("Todos");
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -111,6 +115,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
   const departments = data.departments;
   const statuses = data.statuses;
   const detailProfile = detailId ? profiles.find((profile) => profile.id === detailId) ?? null : null;
+  const serviceTypes = useMemo(() => uniqueNames(profiles.map((profile) => profile.service_type)), [profiles]);
 
   useEffect(() => {
     setQuery(initialQuery);
@@ -130,12 +135,14 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
         profile.participant_type?.toLowerCase().includes(normalizedQuery) ||
         searchableMinistries.includes(normalizedQuery) ||
         searchableDepartments.includes(normalizedQuery);
+      const matchesClass = classFilter === "Todos" || (profile.participant_type ?? "Servidor") === classFilter;
+      const matchesType = typeFilter === "Todos" || profile.service_type === typeFilter;
       const matchesMinistry = ministry === "Todos" || profile.ministry.split(", ").includes(ministry);
       const matchesStatus = status === "Todos" || profile.service_status === status;
 
-      return matchesQuery && matchesMinistry && matchesStatus;
+      return matchesQuery && matchesClass && matchesType && matchesMinistry && matchesStatus;
     });
-  }, [ministry, profiles, query, status]);
+  }, [classFilter, ministry, profiles, query, status, typeFilter]);
 
   const profileMutation = useMutation({
     mutationFn: async (payload: ProfileFormState) => {
@@ -301,7 +308,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
           <article className="panel profile-info-panel">
             <h2>Información</h2>
             <QuickContactActions address={detailProfile.address} email={detailProfile.email} phone={detailProfile.phone} />
-            <Info label="Clasificación" value={detailProfile.participant_type ?? "Servidor"} />
+            <Info label="Clase" value={detailProfile.participant_type ?? "Servidor"} />
             <Info label="Teléfono" value={detailProfile.phone} />
             <Info label="Email" value={detailProfile.email} />
             <Info label="Dirección" value={detailProfile.address} />
@@ -418,33 +425,62 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
         )}
       </section>
 
-      <section className="panel filter-panel">
-        <label className="search-field">
-          <Search size={18} />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por nombre, email, teléfono, ministerio o departamento"
-          />
+      <section className="panel filter-panel profile-filter-panel">
+        <label className="search-field filter-control filter-control-search">
+          <span>Buscar</span>
+          <div>
+            <Search size={18} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar por nombre, email, teléfono, ministerio o departamento"
+            />
+          </div>
         </label>
 
-        <label className="select-field">
-          <SlidersHorizontal size={18} />
-          <select value={ministry} onChange={(event) => setMinistry(event.target.value)}>
-            <option>Todos</option>
-            {ministries.map((item) => (
-              <option key={item.id}>{item.name}</option>
-            ))}
-          </select>
+        <label className="select-field filter-control">
+          <span>Clase</span>
+          <div>
+            <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
+              <option>Todos</option>
+              {participantOptions.map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </div>
         </label>
 
-        <label className="select-field">
-          <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option>Todos</option>
-            {statuses.map((item) => (
-              <option key={item.id}>{item.name}</option>
-            ))}
-          </select>
+        <label className="select-field filter-control">
+          <span>Tipo</span>
+          <div>
+            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+              <option>Todos</option>
+              {serviceTypes.map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </div>
+        </label>
+
+        <label className="select-field filter-control">
+          <span>Ministerio</span>
+          <div>
+            <SlidersHorizontal size={18} />
+            <select value={ministry} onChange={(event) => setMinistry(event.target.value)}>
+              <option>Todos</option>
+              {ministries.map((item) => (
+                <option key={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </div>
+        </label>
+
+        <label className="select-field filter-control">
+          <span>Estado</span>
+          <div>
+            <select value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option>Todos</option>
+              {statuses.map((item) => (
+                <option key={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </div>
         </label>
       </section>
 
@@ -457,7 +493,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
             <thead>
               <tr>
                 <th>Nombre</th>
-                <th>Clasificación</th>
+                <th>Clase</th>
                 <th>Ministerio</th>
                 <th>Departamento</th>
                 <th>Estado</th>
@@ -672,7 +708,7 @@ function ProfileEditor({
           <Field label="Cumpleaños" type="date" value={form.birth_date} onChange={(value) => onChange({ ...form, birth_date: value })} />
           <Field label="Inicio de servicio" type="date" value={form.service_start_date} onChange={(value) => onChange({ ...form, service_start_date: value })} />
           <label className="field">
-            <span>Clasificación</span>
+            <span>Clase</span>
             <select value={form.participant_type} onChange={(event) => onChange({ ...form, participant_type: event.target.value as ParticipantType })}>
               <option>Servidor</option>
               <option>Lider</option>
