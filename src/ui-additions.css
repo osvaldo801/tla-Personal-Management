@@ -130,9 +130,134 @@
   font-size: 14px;
 }
 
+.modal-panel.profile-editor {
+  width: min(calc(100vw - 48px), 1280px);
+  padding: 26px;
+}
+
+.modal-panel.profile-editor .profile-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px 20px;
+  align-items: start;
+}
+
+.modal-panel.profile-editor .field {
+  min-width: 0;
+}
+
+.modal-panel.profile-editor .field span {
+  min-height: 20px;
+  line-height: 1.25;
+}
+
+.modal-panel.profile-editor input,
+.modal-panel.profile-editor select {
+  min-height: 48px;
+  width: 100%;
+  font-size: 16px;
+}
+
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(1) {
+  grid-column: span 4;
+}
+
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(2) {
+  grid-column: span 3;
+}
+
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(3) {
+  grid-column: span 5;
+}
+
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(4) {
+  grid-column: span 12;
+}
+
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(5),
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(6),
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(7),
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(10),
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(11),
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(12) {
+  grid-column: span 4;
+}
+
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(8),
+.modal-panel.profile-editor .profile-editor-grid > .field:nth-child(9) {
+  grid-column: span 6;
+}
+
+.modal-panel.profile-editor .check-list {
+  min-height: 230px;
+  max-height: 300px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  align-content: start;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.modal-panel.profile-editor .check-list label {
+  min-width: 0;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.modal-panel.profile-editor .check-list input {
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+
+.modal-panel.profile-editor .check-list span {
+  min-width: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.modal-panel.profile-editor .checkbox-field {
+  align-self: end;
+  display: flex;
+  gap: 10px;
+  padding-top: 28px;
+}
+
+.modal-panel.profile-editor .checkbox-field input {
+  width: 18px;
+  min-height: 18px;
+  flex: 0 0 auto;
+}
+
+.modal-panel.profile-editor .modal-actions {
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 16px;
+}
+
 @media (max-width: 900px) {
   .dashboard-kpi-row.two-up {
     grid-template-columns: 1fr;
+  }
+
+  .modal-panel.profile-editor {
+    width: min(100%, 680px);
+  }
+
+  .modal-panel.profile-editor .profile-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-panel.profile-editor .profile-editor-grid > .field:nth-child(n) {
+    grid-column: 1 / -1;
+  }
+
+  .modal-panel.profile-editor .check-list {
+    min-height: 0;
+    max-height: 240px;
+    grid-template-columns: 1fr;
+  }
+
+  .modal-panel.profile-editor .checkbox-field {
+    padding-top: 0;
   }
 }
 
@@ -148,5 +273,10 @@
 
   .language-toggle button {
     min-width: 32px;
+  }
+
+  .modal-panel.profile-editor {
+    width: min(100%, calc(100vw - 16px));
+    padding: 20px;
   }
 }
