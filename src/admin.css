@@ -151,13 +151,8 @@
 }
 
 .row-actions,
-detail-actions,
+.detail-actions,
 .mobile-profile-list {
-  display: flex;
-  gap: 8px;
-}
-
-.detail-actions {
   display: flex;
   gap: 8px;
 }
@@ -373,9 +368,14 @@ detail-actions,
 }
 
 .analytics-card h2,
-.panel h2,
+panel h2,
 .page-heading.compact h1,
 .filter-box h3 {
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.panel h2 {
   font-weight: 900;
   text-transform: uppercase;
 }
