@@ -1,0 +1,32 @@
+@media (min-width: 1024px) {
+  .app-shell {
+    transition: none;
+  }
+
+  .app-shell .sidebar {
+    transition:
+      flex-basis 180ms ease,
+      width 180ms ease,
+      max-width 180ms ease;
+  }
+
+  .app-shell.sidebar-collapsed .sidebar {
+    flex: 0 0 82px !important;
+    width: 82px !important;
+    min-width: 82px !important;
+    max-width: 82px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .app-shell.sidebar-collapsed .main-panel {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  .app-shell.sidebar-collapsed .sidebar-collapse-button {
+    right: -16px;
+  }
+}
