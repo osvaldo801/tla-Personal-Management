@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Cake, Search, UserPlus, Users } from "lucide-react";
+import { Cake, Mail, MessageSquare, Phone, Search, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Language } from "../App";
@@ -156,10 +156,13 @@ export function Dashboard({ language = "es", onOpenProfile }: { language?: Langu
             </label>
             <div className="quick-results">
               {quickResults.map((profile) => (
-                <button className="quick-result-button" key={profile.id} onClick={() => onOpenProfile?.(profile.full_name)} type="button">
-                  <strong>{profile.full_name}</strong>
-                  <span>{profile.ministry} - {profile.phone}</span>
-                </button>
+                <article className="quick-result-card" key={profile.id}>
+                  <button className="quick-result-main" onClick={() => onOpenProfile?.(profile.full_name)} type="button">
+                    <strong>{profile.full_name}</strong>
+                    <span>{profile.ministry} - {profile.phone}</span>
+                  </button>
+                  <ContactActions email={profile.email} phone={profile.phone} />
+                </article>
               ))}
               {quickResults.length === 0 && <p className="helper-text">{t.noServers}</p>}
             </div>
@@ -231,11 +234,35 @@ function BirthdayList({ emptyText, title, profiles }: { emptyText: string; title
         <p>{emptyText}</p>
       ) : (
         profiles.map((profile) => (
-          <div key={profile.id}>
+          <div className="birthday-card" key={profile.id}>
             <strong>{profile.full_name}</strong>
             <span>{formatBirthday(profile.birth_date)}</span>
           </div>
         ))
+      )}
+    </div>
+  );
+}
+
+function ContactActions({ email, phone }: { email: string; phone: string }) {
+  const cleanPhone = phone.replace(/[^+\d]/g, "");
+
+  return (
+    <div className="quick-contact-actions" aria-label="Acciones de contacto">
+      {cleanPhone && (
+        <>
+          <a aria-label="Llamar" href={`tel:${cleanPhone}`} title="Llamar">
+            <Phone size={16} />
+          </a>
+          <a aria-label="Enviar texto" href={`sms:${cleanPhone}`} title="Texto">
+            <MessageSquare size={16} />
+          </a>
+        </>
+      )}
+      {email && (
+        <a aria-label="Enviar email" href={`mailto:${email}`} title="Email">
+          <Mail size={16} />
+        </a>
       )}
     </div>
   );
