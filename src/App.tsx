@@ -1,4 +1,4 @@
-import { Building2, LayoutDashboard, LogOut, Settings, ShieldCheck, Menu, Users, X } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, LayoutDashboard, LogOut, Settings, ShieldCheck, Menu, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
@@ -16,7 +16,9 @@ const labels = {
   es: {
     admin: "Administrador",
     closeMenu: "Cerrar menu",
+    collapsePanel: "Esconder panel",
     dashboard: "Dashboard",
+    expandPanel: "Mostrar panel",
     loading: "Cargando...",
     ministryLeader: "Lider de Ministerio",
     ministries: "Ministerios",
@@ -33,7 +35,9 @@ const labels = {
   en: {
     admin: "Administrator",
     closeMenu: "Close menu",
+    collapsePanel: "Hide panel",
     dashboard: "Dashboard",
+    expandPanel: "Show panel",
     loading: "Loading...",
     ministryLeader: "Ministry Leader",
     ministries: "Ministries",
@@ -60,8 +64,10 @@ const interfaceTranslations: Record<string, { es: string; en: string }> = {
   "Borrar": { es: "Borrar", en: "Delete" },
   "BUSCAR SERVIDOR": { es: "BUSCAR SERVIDOR", en: "SEARCH SERVER" },
   "Cancelar": { es: "Cancelar", en: "Cancel" },
-  "Clasificación": { es: "Clasificación", en: "Classification" },
-  "CLASIFICACIÓN": { es: "CLASIFICACIÓN", en: "CLASSIFICATION" },
+  "Clase": { es: "Clase", en: "Class" },
+  "CLASE": { es: "CLASE", en: "CLASS" },
+  "Clasificación": { es: "Clase", en: "Class" },
+  "CLASIFICACIÓN": { es: "CLASE", en: "CLASS" },
   "Comentarios": { es: "Comentarios", en: "Comments" },
   "Configuracion de Organizacion": { es: "Configuracion de Organizacion", en: "Organization Settings" },
   "Contacto de emergencia": { es: "Contacto de emergencia", en: "Emergency contact" },
@@ -88,8 +94,8 @@ const interfaceTranslations: Record<string, { es: string; en: string }> = {
   "Guardar cambios": { es: "Guardar cambios", en: "Save changes" },
   "Guardar comentario": { es: "Guardar comentario", en: "Save comment" },
   "Guardando...": { es: "Guardando...", en: "Saving..." },
-  "Información": { es: "Información", en: "Information" },
   "Informacion general": { es: "Informacion general", en: "General information" },
+  "Información": { es: "Información", en: "Information" },
   "Inicio de servicio": { es: "Inicio de servicio", en: "Service start" },
   "Lista operativa de servidores y colaboradores.": { es: "Lista operativa de servidores y colaboradores.", en: "Operational list of servers and collaborators." },
   "Logo institucional": { es: "Logo institucional", en: "Institutional logo" },
@@ -182,10 +188,11 @@ function translateInterface(language: Language) {
 }
 
 export function App() {
-  const { session, profile, isAdmin, isSuperAdmin, isLoading, signOut } = useAuth();
+  const { session, profile, isSuperAdmin, isLoading, signOut } = useAuth();
   const { settings } = useOrganizationSettings();
   const [view, setView] = useState<View>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [profileQuery, setProfileQuery] = useState("");
   const [language, setLanguage] = useState<Language>("es");
   const t = labels[language];
@@ -228,8 +235,17 @@ export function App() {
   ];
 
   return (
-    <div className={`app-shell role-${profile.role}`}>
+    <div className={`app-shell role-${profile.role} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <aside className={`sidebar ${sidebarOpen ? "is-open" : ""}`}>
+        <button
+          className="sidebar-collapse-button desktop-only"
+          onClick={() => setSidebarCollapsed((value) => !value)}
+          type="button"
+          aria-label={sidebarCollapsed ? t.expandPanel : t.collapsePanel}
+          title={sidebarCollapsed ? t.expandPanel : t.collapsePanel}
+        >
+          {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </button>
         <div className="brand-block">
           <img src={settings.logo_url} alt={settings.organization_name} className="brand-logo" />
           <div>
@@ -254,6 +270,7 @@ export function App() {
                     setView(item.id);
                     setSidebarOpen(false);
                   }}
+                  title={sidebarCollapsed ? item.label : undefined}
                 >
                   <Icon size={18} />
                   <span>{item.label}</span>
@@ -268,7 +285,7 @@ export function App() {
             <span>{profile.full_name || profile.email}</span>
           </div>
           <div className="version-label">Version 0.3.10</div>
-          <button className="nav-item" onClick={signOut}>
+          <button className="nav-item" onClick={signOut} title={sidebarCollapsed ? t.signOut : undefined}>
             <LogOut size={18} />
             <span>{t.signOut}</span>
           </button>
