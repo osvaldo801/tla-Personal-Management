@@ -130,6 +130,79 @@
   font-size: 14px;
 }
 
+.quick-result-card {
+  min-height: 62px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+}
+
+.quick-result-main {
+  border: 0;
+  background: transparent;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.quick-result-main strong,
+.birthday-card strong {
+  overflow-wrap: anywhere;
+}
+
+.quick-contact-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-contact-actions a {
+  width: 38px;
+  height: 38px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  display: inline-grid;
+  place-items: center;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+
+.quick-contact-actions a:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.birthday-card {
+  min-height: 56px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.birthday-card span {
+  display: block;
+}
+
+.profile-card .quick-contact-actions {
+  margin: 2px 0 4px;
+}
+
+.profile-info-panel > .quick-contact-actions {
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 0 0 12px;
+}
+
 .modal-panel.profile-editor {
   width: min(calc(100vw - 48px), 1280px);
   padding: 26px;
@@ -243,6 +316,14 @@
 @media (max-width: 900px) {
   .dashboard-kpi-row.two-up {
     grid-template-columns: 1fr;
+  }
+
+  .quick-result-card {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-contact-actions a {
+    flex: 1 1 70px;
   }
 
   .modal-panel.profile-editor {
