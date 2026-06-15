@@ -313,6 +313,105 @@
   padding-top: 16px;
 }
 
+.sidebar .nav-item.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+  box-shadow: 0 10px 22px rgb(37 99 235 / 18%);
+}
+
+.sidebar .nav-item.active svg,
+.sidebar .nav-item.active span {
+  color: #ffffff;
+}
+
+.sidebar .nav-item.active:hover {
+  background: #1d4ed8;
+}
+
+.ministries-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.ministry-card {
+  min-width: 0;
+  min-height: 360px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.ministry-card h2,
+.ministry-card p {
+  margin: 0;
+}
+
+.ministry-card > div:first-child {
+  display: grid;
+  gap: 8px;
+}
+
+.ministry-metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.ministry-metrics strong {
+  color: #0f766e;
+  font-size: 24px;
+  line-height: 1.15;
+  text-align: right;
+}
+
+.ministry-card .department-list {
+  align-content: start;
+  gap: 8px;
+}
+
+.ministry-card .department-list > div {
+  min-height: 52px;
+  grid-template-columns: minmax(140px, 1fr) 74px auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+}
+
+.ministry-card .department-list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.ministry-card .department-list span {
+  white-space: nowrap;
+  text-align: center;
+}
+
+.ministry-card .department-list .link-button {
+  margin-left: 0;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.ministry-card .row-actions {
+  min-width: 0;
+  width: 100%;
+  justify-content: flex-start;
+  padding-top: 4px;
+}
+
+@media (min-width: 1500px) {
+  .ministries-grid {
+    grid-template-columns: repeat(3, minmax(380px, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .dashboard-kpi-row.two-up {
     grid-template-columns: 1fr;
@@ -346,6 +445,23 @@
 
   .modal-panel.profile-editor .checkbox-field {
     padding-top: 0;
+  }
+
+  .ministries-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ministry-card {
+    min-height: 0;
+  }
+
+  .ministry-card .department-list > div {
+    grid-template-columns: 1fr;
+  }
+
+  .ministry-card .department-list span,
+  .ministry-card .department-list .link-button {
+    text-align: left;
   }
 }
 
