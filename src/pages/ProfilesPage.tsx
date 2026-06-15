@@ -1,4 +1,4 @@
-import { Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Mail, MapPin, MessageSquare, Phone, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { demoStatusOptions, type DemoMinistry, type DemoProfile, type DemoStatusOption } from "../data/demoData";
@@ -300,6 +300,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
         <section className="profile-detail-grid">
           <article className="panel profile-info-panel">
             <h2>Información</h2>
+            <QuickContactActions address={detailProfile.address} email={detailProfile.email} phone={detailProfile.phone} />
             <Info label="Clasificación" value={detailProfile.participant_type ?? "Servidor"} />
             <Info label="Teléfono" value={detailProfile.phone} />
             <Info label="Email" value={detailProfile.email} />
@@ -609,6 +610,7 @@ function ProfileCard({
       <p>{profile.departments || "Sin departamento"}</p>
       <p>{profile.phone}</p>
       <p>{profile.email}</p>
+      <QuickContactActions address={profile.address} email={profile.email} phone={profile.phone} />
       <div className="comment-cell">
         <strong>{profile.last_comment || "Sin comentarios"}</strong>
         {profile.last_comment && (
@@ -742,6 +744,24 @@ function ProfileEditor({
 function ParticipantBadge({ value }: { value: ParticipantType }) {
   const className = value === "Servidor" ? "server" : value === "Lider" ? "leader" : "collaborator";
   return <span className={`participant-badge ${className}`}>{value}</span>;
+}
+
+function QuickContactActions({ address, email, phone }: { address: string; email: string; phone: string }) {
+  const cleanPhone = phone.replace(/[^+\d]/g, "");
+  const mapsUrl = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : "";
+
+  return (
+    <div className="quick-contact-actions" aria-label="Acciones de contacto">
+      {cleanPhone && (
+        <>
+          <a aria-label="Llamar" href={`tel:${cleanPhone}`} title="Llamar"><Phone size={16} /></a>
+          <a aria-label="Enviar texto" href={`sms:${cleanPhone}`} title="Texto"><MessageSquare size={16} /></a>
+        </>
+      )}
+      {email && <a aria-label="Enviar email" href={`mailto:${email}`} title="Email"><Mail size={16} /></a>}
+      {mapsUrl && <a aria-label="Abrir mapa" href={mapsUrl} rel="noreferrer" target="_blank" title="Mapa"><MapPin size={16} /></a>}
+    </div>
+  );
 }
 
 function Field({ label, onChange, type = "text", value }: { label: string; onChange: (value: string) => void; type?: string; value: string }) {
