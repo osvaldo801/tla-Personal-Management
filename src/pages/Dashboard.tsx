@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Cake, Mail, MessageSquare, Phone, Search, UserPlus, Users } from "lucide-react";
+import { Cake, Mail, MapPin, MessageSquare, Phone, Search, UserPlus, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Language } from "../App";
@@ -161,7 +161,7 @@ export function Dashboard({ language = "es", onOpenProfile }: { language?: Langu
                     <strong>{profile.full_name}</strong>
                     <span>{profile.ministry} - {profile.phone}</span>
                   </button>
-                  <ContactActions email={profile.email} phone={profile.phone} />
+                  <ContactActions address={profile.address} email={profile.email} phone={profile.phone} />
                 </article>
               ))}
               {quickResults.length === 0 && <p className="helper-text">{t.noServers}</p>}
@@ -244,8 +244,9 @@ function BirthdayList({ emptyText, title, profiles }: { emptyText: string; title
   );
 }
 
-function ContactActions({ email, phone }: { email: string; phone: string }) {
+function ContactActions({ address, email, phone }: { address: string; email: string; phone: string }) {
   const cleanPhone = phone.replace(/[^+\d]/g, "");
+  const mapsUrl = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : "";
 
   return (
     <div className="quick-contact-actions" aria-label="Acciones de contacto">
@@ -262,6 +263,11 @@ function ContactActions({ email, phone }: { email: string; phone: string }) {
       {email && (
         <a aria-label="Enviar email" href={`mailto:${email}`} title="Email">
           <Mail size={16} />
+        </a>
+      )}
+      {mapsUrl && (
+        <a aria-label="Abrir mapa" href={mapsUrl} rel="noreferrer" target="_blank" title="Mapa">
+          <MapPin size={16} />
         </a>
       )}
     </div>
