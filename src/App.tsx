@@ -267,7 +267,7 @@ export function App() {
             <Users size={16} />
             <span>{profile.full_name || profile.email}</span>
           </div>
-          <div className="version-label">Version 0.3.9</div>
+          <div className="version-label">Version 0.3.10</div>
           <button className="nav-item" onClick={signOut}>
             <LogOut size={18} />
             <span>{t.signOut}</span>
