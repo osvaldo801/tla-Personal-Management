@@ -37,7 +37,141 @@
 }
 
 .version-label::after {
-  content: "Version 0.3.12";
+  content: "Version 0.3.13";
   font-size: 13px;
   font-weight: 800;
+}
+
+.profile-photo,
+.enhanced-profile-photo {
+  width: 58px;
+  height: 58px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  display: inline-grid;
+  place-items: center;
+  overflow: hidden;
+  background: #eef2f7;
+  color: #334155;
+  font-weight: 900;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.enhanced-profile-photo {
+  cursor: pointer;
+}
+
+.profile-photo img,
+.enhanced-profile-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-photo strong {
+  position: absolute;
+  bottom: 5px;
+  right: 6px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.profile-photo.male,
+.enhanced-profile-photo.male {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.profile-photo.female,
+.enhanced-profile-photo.female {
+  background: #fce7f3;
+  color: #be185d;
+  border-color: #f9a8d4;
+}
+
+.profile-photo-large,
+.profile-photo.profile-photo-large,
+.enhanced-profile-photo-large {
+  width: 132px;
+  height: 132px;
+  border-radius: 12px;
+  font-size: 28px;
+}
+
+.profile-photo-button,
+.profile-photo-input {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.profile-photo-button:not(:disabled),
+.profile-photo-input {
+  cursor: pointer;
+}
+
+.profile-heading-content,
+.enhanced-detail-title {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-width: 0;
+}
+
+.profile-photo-input {
+  width: fit-content;
+  display: grid;
+  gap: 8px;
+  color: hsl(var(--muted-foreground));
+  font-weight: 800;
+}
+
+.profile-photo-input span:not(.profile-photo) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-photo-input input {
+  display: none;
+}
+
+.profile-card-header,
+.enhanced-profile-card-head,
+.photo-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.desktop-profile-table td:nth-child(2),
+.desktop-profile-table th:nth-child(2) {
+  width: 78px;
+}
+
+.gender-info-enhancement select,
+.gender-editor-enhancement select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .profile-heading-content,
+  .enhanced-detail-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-photo-large,
+  .profile-photo.profile-photo-large,
+  .enhanced-profile-photo-large {
+    width: 112px;
+    height: 112px;
+  }
 }
