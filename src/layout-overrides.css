@@ -37,7 +37,7 @@
 }
 
 .version-label::after {
-  content: "Version 0.3.19";
+  content: "Version 0.3.20";
   font-size: 13px;
   font-weight: 800;
 }
@@ -336,7 +336,7 @@
 
   .compact-mobile-profile-card {
     display: grid !important;
-    grid-template-columns: 122px minmax(0, 1fr);
+    grid-template-columns: 132px minmax(0, 1fr);
     column-gap: 14px;
     row-gap: 12px;
     padding: 16px !important;
@@ -349,9 +349,9 @@
 
   .compact-mobile-card-head .enhanced-profile-photo-mobile {
     grid-column: 1;
-    grid-row: 1 / span 3;
-    width: 116px;
-    height: 148px;
+    grid-row: 1;
+    width: 132px;
+    height: 168px;
   }
 
   .compact-mobile-card-main {
@@ -399,11 +399,13 @@
   }
 
   .compact-mobile-profile-card .quick-actions {
-    grid-column: 1 / -1;
+    grid-column: 1 / -1 !important;
+    grid-row: 4 !important;
     display: grid !important;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    width: 100% !important;
+    clear: both;
   }
 
   .compact-mobile-profile-card .quick-actions a,
@@ -411,10 +413,12 @@
   .compact-mobile-profile-card .quick-actions .quick-contact {
     width: 100% !important;
     height: 46px !important;
+    min-width: 0 !important;
   }
 
   .compact-mobile-profile-card .comment-cell {
     grid-column: 1 / -1;
+    grid-row: 5;
     display: block !important;
     margin-top: 4px;
   }
@@ -432,6 +436,7 @@
 
   .compact-mobile-profile-card .row-actions {
     grid-column: 1 / -1;
+    grid-row: 6;
   }
 
   .profile-photo-dialog-actions {
