@@ -37,7 +37,7 @@
 }
 
 .version-label::after {
-  content: "Version 0.3.18";
+  content: "Version 0.3.19";
   font-size: 13px;
   font-weight: 800;
 }
@@ -338,7 +338,7 @@
     display: grid !important;
     grid-template-columns: 122px minmax(0, 1fr);
     column-gap: 14px;
-    row-gap: 10px;
+    row-gap: 12px;
     padding: 16px !important;
     align-items: start;
   }
@@ -394,31 +394,40 @@
 
   .compact-mobile-profile-card .mobile-duplicate-contact,
   .compact-mobile-profile-card > p:nth-of-type(3),
-  .compact-mobile-profile-card > p:nth-of-type(4),
-  .compact-mobile-profile-card .comment-cell {
+  .compact-mobile-profile-card > p:nth-of-type(4) {
     display: none !important;
   }
 
-  .compact-mobile-profile-card > .profile-quick-actions,
-  .compact-mobile-card-head .profile-quick-actions {
-    display: none !important;
-  }
-
-  .compact-mobile-profile-card > .quick-actions,
-  .compact-mobile-profile-card > div:not(.compact-mobile-card-head):has(.quick-contact) {
+  .compact-mobile-profile-card .quick-actions {
     grid-column: 1 / -1;
-  }
-
-  .compact-mobile-profile-card .profile-quick-actions:not(.compact-mobile-card-head .profile-quick-actions) {
-    display: grid;
+    display: grid !important;
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;
     width: 100%;
   }
 
-  .compact-mobile-profile-card .profile-quick-actions:not(.compact-mobile-card-head .profile-quick-actions) .quick-contact {
-    width: 100%;
-    height: 46px;
+  .compact-mobile-profile-card .quick-actions a,
+  .compact-mobile-profile-card .quick-actions button,
+  .compact-mobile-profile-card .quick-actions .quick-contact {
+    width: 100% !important;
+    height: 46px !important;
+  }
+
+  .compact-mobile-profile-card .comment-cell {
+    grid-column: 1 / -1;
+    display: block !important;
+    margin-top: 4px;
+  }
+
+  .compact-mobile-profile-card .comment-cell strong {
+    display: block;
+    font-size: 18px;
+    line-height: 1.25;
+  }
+
+  .compact-mobile-profile-card .comment-cell span {
+    display: block;
+    margin-top: 4px;
   }
 
   .compact-mobile-profile-card .row-actions {
