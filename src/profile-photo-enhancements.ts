@@ -53,6 +53,7 @@ async function loadProfiles() {
 
 function enhanceProfilePhotos() {
   enhanceRows();
+  simplifyServerTable();
   enhanceCards();
   enhanceDetailHeader();
   enhanceGenderInfo();
@@ -69,9 +70,105 @@ function enhanceRows() {
     row.dataset.photoEnhanced = "true";
     const firstCell = row.querySelector<HTMLTableCellElement>("td");
     if (!firstCell) return;
-    firstCell.classList.add("photo-name-cell");
-    firstCell.prepend(createPhotoButton(profile, "small"));
+    firstCell.classList.add("photo-name-cell", "server-name-contact-cell");
+
+    const nameWrap = document.createElement("div");
+    nameWrap.className = "server-name-wrap";
+    nameWrap.append(nameButton, createQuickActions(profile));
+    firstCell.replaceChildren(createPhotoButton(profile, "list"), nameWrap);
   });
+}
+
+function simplifyServerTable() {
+  document.querySelectorAll<HTMLTableElement>(".desktop-profile-table").forEach((table) => {
+    const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>("thead th"));
+    const indexByText = (text: string) => headers.findIndex((header) => normalizeText(header.textContent ?? "").includes(text));
+    const lastCommentIndex = indexByText("ultimo comentario");
+    const typeIndex = indexByText("tipo");
+    const phoneIndex = indexByText("telefono");
+    const emailIndex = indexByText("email");
+
+    if (lastCommentIndex >= 0) hideTableColumn(table, lastCommentIndex);
+
+    table.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((row) => {
+      const nameButton = row.querySelector<HTMLButtonElement>(".link-button");
+      const profile = nameButton ? findProfile(row.textContent ?? "", nameButton.textContent ?? "") : findProfileByRow(row);
+      const cells = Array.from(row.children) as HTMLTableCellElement[];
+
+      if (typeIndex >= 0 && cells[typeIndex]) cells[typeIndex].textContent = abbreviateType(cells[typeIndex].textContent ?? "");
+      if (profile && phoneIndex >= 0 && cells[phoneIndex]) replaceCellWithIcon(cells[phoneIndex], createContactLink("phone", profile));
+      if (profile && emailIndex >= 0 && cells[emailIndex]) replaceCellWithIcon(cells[emailIndex], createContactLink("email", profile));
+    });
+  });
+}
+
+function hideTableColumn(table: HTMLTableElement, index: number) {
+  table.querySelectorAll<HTMLTableRowElement>("tr").forEach((row) => {
+    const cell = row.children[index] as HTMLElement | undefined;
+    if (cell) cell.style.display = "none";
+  });
+}
+
+function replaceCellWithIcon(cell: HTMLTableCellElement, link: HTMLAnchorElement | null) {
+  if (cell.dataset.compactContact === "true") return;
+  cell.dataset.compactContact = "true";
+  cell.classList.add("compact-contact-cell");
+  cell.replaceChildren(link ?? emptyContactIcon());
+}
+
+function createQuickActions(profile: ServerPhotoProfile) {
+  const actions = document.createElement("div");
+  actions.className = "profile-quick-actions";
+  const maps = createContactLink("map", profile);
+  const phone = createContactLink("phone", profile);
+  const text = createContactLink("text", profile);
+  const email = createContactLink("email", profile);
+  [maps, phone, text, email].forEach((link) => {
+    if (link) actions.append(link);
+  });
+  return actions;
+}
+
+function createContactLink(kind: "map" | "phone" | "text" | "email", profile: ServerPhotoProfile) {
+  const link = document.createElement("a");
+  link.className = `quick-contact quick-contact-${kind}`;
+  link.target = kind === "map" ? "_blank" : "";
+  link.rel = kind === "map" ? "noreferrer" : "";
+
+  if (kind === "map") {
+    if (!profile.address) return null;
+    link.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.address)}`;
+    link.title = "Abrir direccion en Google Maps";
+    link.textContent = "⌖";
+  }
+  if (kind === "phone") {
+    if (!profile.phone) return null;
+    link.href = `tel:${normalizePhone(profile.phone)}`;
+    link.title = "Llamar";
+    link.textContent = "☎";
+  }
+  if (kind === "text") {
+    if (!profile.phone) return null;
+    link.href = `sms:${normalizePhone(profile.phone)}`;
+    link.title = "Mandar texto";
+    link.textContent = "✉";
+  }
+  if (kind === "email") {
+    if (!profile.email) return null;
+    link.href = `mailto:${profile.email}`;
+    link.title = "Enviar email";
+    link.textContent = "@";
+  }
+
+  link.addEventListener("click", (event) => event.stopPropagation());
+  return link;
+}
+
+function emptyContactIcon() {
+  const span = document.createElement("span");
+  span.className = "quick-contact quick-contact-empty";
+  span.textContent = "-";
+  return span;
 }
 
 function enhanceCards() {
@@ -88,7 +185,7 @@ function enhanceCards() {
     const textWrap = document.createElement("div");
     nameButton.parentElement?.insertBefore(header, nameButton);
     header.append(photo, textWrap);
-    textWrap.append(nameButton);
+    textWrap.append(nameButton, createQuickActions(profile));
     const badge = card.querySelector<HTMLElement>(".participant-badge");
     if (badge) textWrap.append(badge);
   });
@@ -163,14 +260,14 @@ function createGenderSelect(profile: ServerPhotoProfile | null) {
   return select;
 }
 
-function createPhotoButton(profile: ServerPhotoProfile, size: "small" | "large") {
+function createPhotoButton(profile: ServerPhotoProfile, size: "small" | "large" | "list") {
   const button = document.createElement("button");
   button.className = `enhanced-profile-photo enhanced-profile-photo-${size}`;
   button.type = "button";
-  button.title = "Subir o reemplazar foto";
+  button.title = "Ver o reemplazar foto";
   button.dataset.profilePhotoId = profile.id;
   renderPhoto(button, profile);
-  button.addEventListener("click", () => void uploadPhoto(profile));
+  button.addEventListener("click", () => openPhotoDialog(profile));
   return button;
 }
 
@@ -184,30 +281,140 @@ function renderPhoto(target: HTMLElement, profile: ServerPhotoProfile) {
     : `<span>${initials}</span>`;
 }
 
-async function uploadPhoto(profile: ServerPhotoProfile) {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/*";
-  input.onchange = async () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${profile.id}/${Date.now()}.${extension}`;
-    const upload = await supabase.storage.from("server-photos").upload(path, file, { cacheControl: "3600", upsert: true });
-    if (upload.error) {
-      window.alert("No se pudo subir la foto.");
-      return;
-    }
-    const { data } = supabase.storage.from("server-photos").getPublicUrl(path);
-    const update = await supabase.from("server_profiles").update({ photo_url: data.publicUrl }).eq("id", profile.id);
-    if (update.error) {
-      window.alert("La foto subió, pero no se pudo guardar en el perfil.");
-      return;
-    }
-    profile.photo_url = data.publicUrl;
-    document.querySelectorAll(`[data-profile-photo-id="${profile.id}"]`).forEach((node) => renderPhoto(node as HTMLElement, profile));
-  };
-  input.click();
+function openPhotoDialog(profile: ServerPhotoProfile) {
+  document.querySelector(".profile-photo-dialog")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "profile-photo-dialog";
+  overlay.innerHTML = `
+    <div class="profile-photo-dialog-card" role="dialog" aria-modal="true">
+      <button class="profile-photo-dialog-close" type="button" aria-label="Cerrar">×</button>
+      <div class="profile-photo-preview-area">
+        <div class="profile-photo-id-frame" data-photo-preview></div>
+      </div>
+      <div class="profile-photo-crop-tools" hidden>
+        <label>Zoom <input type="range" min="1" max="2.5" step="0.05" value="1" data-photo-zoom /></label>
+      </div>
+      <div class="profile-photo-dialog-actions">
+        <button class="btn btn-secondary" type="button" data-photo-pick>Subir nueva</button>
+        <button class="btn btn-primary" type="button" data-photo-save hidden>Guardar foto ID</button>
+      </div>
+    </div>`;
+  document.body.append(overlay);
+
+  const close = () => overlay.remove();
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector<HTMLButtonElement>(".profile-photo-dialog-close")?.addEventListener("click", close);
+
+  const preview = overlay.querySelector<HTMLElement>("[data-photo-preview]");
+  const zoom = overlay.querySelector<HTMLInputElement>("[data-photo-zoom]");
+  const save = overlay.querySelector<HTMLButtonElement>("[data-photo-save]");
+  const tools = overlay.querySelector<HTMLElement>(".profile-photo-crop-tools");
+  if (!preview || !zoom || !save || !tools) return;
+
+  renderDialogPreview(preview, profile);
+  let selectedImage: HTMLImageElement | null = null;
+  let selectedFileName = "profile.jpg";
+
+  overlay.querySelector<HTMLButtonElement>("[data-photo-pick]")?.addEventListener("click", () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      selectedFileName = file.name;
+      const url = URL.createObjectURL(file);
+      selectedImage = new Image();
+      selectedImage.onload = () => URL.revokeObjectURL(url);
+      selectedImage.src = url;
+      preview.innerHTML = `<img src="${escapeAttr(url)}" alt="${escapeAttr(profile.full_name)}" />`;
+      tools.hidden = false;
+      save.hidden = false;
+      updatePreviewZoom(preview, zoom.value);
+    };
+    input.click();
+  });
+
+  zoom.addEventListener("input", () => updatePreviewZoom(preview, zoom.value));
+  save.addEventListener("click", async () => {
+    if (!selectedImage) return;
+    const blob = await cropImageForId(selectedImage, Number(zoom.value));
+    await saveProfilePhoto(profile, blob, selectedFileName);
+    close();
+  });
+}
+
+function renderDialogPreview(preview: HTMLElement, profile: ServerPhotoProfile) {
+  preview.innerHTML = profile.photo_url
+    ? `<img src="${escapeAttr(profile.photo_url)}" alt="${escapeAttr(profile.full_name)}" />`
+    : `<span>${getInitials(profile.full_name)}</span>`;
+}
+
+function updatePreviewZoom(preview: HTMLElement, zoom: string) {
+  const image = preview.querySelector<HTMLImageElement>("img");
+  if (image) image.style.transform = `scale(${zoom})`;
+}
+
+function cropImageForId(image: HTMLImageElement, zoom: number) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 600;
+  canvas.height = 750;
+  const context = canvas.getContext("2d");
+  if (!context) return Promise.resolve(new Blob());
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const targetRatio = canvas.width / canvas.height;
+  const imageRatio = image.naturalWidth / image.naturalHeight;
+  let sourceWidth = image.naturalWidth;
+  let sourceHeight = image.naturalHeight;
+  if (imageRatio > targetRatio) sourceWidth = image.naturalHeight * targetRatio;
+  else sourceHeight = image.naturalWidth / targetRatio;
+
+  sourceWidth = Math.max(1, sourceWidth / zoom);
+  sourceHeight = Math.max(1, sourceHeight / zoom);
+  const sourceX = (image.naturalWidth - sourceWidth) / 2;
+  const sourceY = (image.naturalHeight - sourceHeight) / 2;
+  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+
+  return new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob ?? new Blob()), "image/jpeg", 0.9));
+}
+
+async function saveProfilePhoto(profile: ServerPhotoProfile, blob: Blob, originalName: string) {
+  const safeName = originalName.replace(/[^a-z0-9._-]/gi, "-").replace(/\.+/g, ".");
+  const path = `${profile.id}/${Date.now()}-${safeName || "profile.jpg"}`;
+  const upload = await supabase.storage.from("server-photos").upload(path, blob, { cacheControl: "3600", contentType: "image/jpeg", upsert: true });
+  if (upload.error) {
+    window.alert("No se pudo subir la foto.");
+    return;
+  }
+  const { data } = supabase.storage.from("server-photos").getPublicUrl(path);
+  const update = await supabase.from("server_profiles").update({ photo_url: data.publicUrl }).eq("id", profile.id);
+  if (update.error) {
+    window.alert("La foto subió, pero no se pudo guardar en el perfil.");
+    return;
+  }
+  profile.photo_url = data.publicUrl;
+  document.querySelectorAll(`[data-profile-photo-id="${profile.id}"]`).forEach((node) => renderPhoto(node as HTMLElement, profile));
+}
+
+function findProfileByRow(row: HTMLTableRowElement) {
+  const email = row.textContent?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]?.toLowerCase() ?? "";
+  const phone = normalizePhone(row.textContent ?? "");
+  return profiles.find((profile) => {
+    if (email && (profile.email ?? "").toLowerCase() === email) return true;
+    const profilePhone = normalizePhone(profile.phone ?? "");
+    return Boolean(profilePhone && phone.includes(profilePhone));
+  }) ?? null;
+}
+
+function abbreviateType(value: string) {
+  const normalized = normalizeText(value);
+  if (normalized.startsWith("ministerial")) return "MINIS.";
+  if (normalized.startsWith("administrativo")) return "ADMIN.";
+  return value.trim().slice(0, 5).toUpperCase();
 }
 
 function findProfile(containerText: string, name: string) {
