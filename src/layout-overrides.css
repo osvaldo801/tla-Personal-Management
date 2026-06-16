@@ -37,7 +37,7 @@
 }
 
 .version-label::after {
-  content: "Version 0.3.16";
+  content: "Version 0.3.17";
   font-size: 13px;
   font-weight: 800;
 }
@@ -105,6 +105,13 @@
   height: 104px;
   border-radius: 10px;
   font-size: 22px;
+}
+
+.enhanced-profile-photo-mobile {
+  width: 96px;
+  height: 122px;
+  border-radius: 10px;
+  font-size: 26px;
 }
 
 .profile-photo-button,
@@ -267,6 +274,12 @@
   color: #334155;
   font-size: 46px;
   font-weight: 900;
+  touch-action: none;
+  cursor: grab;
+}
+
+.profile-photo-id-frame:active {
+  cursor: grabbing;
 }
 
 .profile-photo-id-frame img {
@@ -274,12 +287,24 @@
   height: 100%;
   object-fit: cover;
   transform-origin: center;
+  will-change: transform;
+}
+
+.profile-photo-crop-tools {
+  display: grid;
+  gap: 8px;
 }
 
 .profile-photo-crop-tools label {
   display: grid;
   gap: 8px;
   font-weight: 800;
+}
+
+.profile-photo-crop-tools p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .profile-photo-dialog-actions {
@@ -307,6 +332,57 @@
   .enhanced-profile-photo-list {
     width: 70px;
     height: 88px;
+  }
+
+  .compact-mobile-profile-card {
+    padding: 14px !important;
+  }
+
+  .compact-mobile-card-head {
+    display: grid !important;
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-items: start !important;
+    gap: 14px !important;
+    margin-bottom: 12px;
+  }
+
+  .compact-mobile-card-main {
+    display: grid;
+    gap: 9px;
+    min-width: 0;
+  }
+
+  .compact-mobile-card-main .link-button,
+  .compact-mobile-card-main .profile-card-title {
+    font-size: 22px;
+    line-height: 1.1;
+    text-align: left;
+  }
+
+  .compact-mobile-card-badge,
+  .compact-mobile-card-status {
+    width: fit-content;
+  }
+
+  .compact-mobile-profile-card .mobile-duplicate-contact {
+    display: none !important;
+  }
+
+  .compact-mobile-profile-card > .profile-quick-actions,
+  .compact-mobile-card-head .profile-quick-actions {
+    display: none !important;
+  }
+
+  .compact-mobile-profile-card .profile-quick-actions:not(.compact-mobile-card-head .profile-quick-actions) {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+
+  .compact-mobile-profile-card .profile-quick-actions:not(.compact-mobile-card-head .profile-quick-actions) .quick-contact {
+    width: 100%;
+    height: 46px;
   }
 
   .profile-photo-dialog-actions {
