@@ -12,6 +12,14 @@ type ServerPhotoProfile = {
   photo_url: string | null;
 };
 
+type CropState = {
+  image: HTMLImageElement | null;
+  fileName: string;
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
+};
+
 let profiles: ServerPhotoProfile[] = [];
 let loadingProfiles: Promise<void> | null = null;
 let observerStarted = false;
@@ -179,15 +187,46 @@ function enhanceCards() {
     const profile = findProfile(card.textContent ?? "", nameButton.textContent ?? "");
     if (!profile) return;
     card.dataset.photoEnhanced = "true";
+    card.classList.add("compact-mobile-profile-card");
+
     const header = document.createElement("div");
-    header.className = "enhanced-profile-card-head";
-    const photo = createPhotoButton(profile, "small");
+    header.className = "enhanced-profile-card-head compact-mobile-card-head";
+    const photo = createPhotoButton(profile, "mobile");
     const textWrap = document.createElement("div");
+    textWrap.className = "compact-mobile-card-main";
+
     nameButton.parentElement?.insertBefore(header, nameButton);
     header.append(photo, textWrap);
-    textWrap.append(nameButton, createQuickActions(profile));
-    const badge = card.querySelector<HTMLElement>(".participant-badge");
-    if (badge) textWrap.append(badge);
+    textWrap.append(nameButton);
+
+    moveCardBadge(card, textWrap);
+    moveCardStatus(card, textWrap);
+    hideDuplicatedCardContactText(card, profile);
+  });
+}
+
+function moveCardBadge(card: HTMLElement, target: HTMLElement) {
+  const badge = card.querySelector<HTMLElement>(".participant-badge");
+  if (!badge) return;
+  badge.classList.add("compact-mobile-card-badge");
+  target.append(badge);
+}
+
+function moveCardStatus(card: HTMLElement, target: HTMLElement) {
+  const status = Array.from(card.querySelectorAll<HTMLElement>(".status-pill")).find((item) => normalizeText(item.textContent ?? "").includes("activo"));
+  if (!status) return;
+  status.classList.add("compact-mobile-card-status");
+  target.append(status);
+}
+
+function hideDuplicatedCardContactText(card: HTMLElement, profile: ServerPhotoProfile) {
+  const needles = [profile.email, profile.phone, profile.address].filter(Boolean).map((value) => normalizeText(value ?? ""));
+  if (!needles.length) return;
+  card.querySelectorAll<HTMLElement>("span, p, div").forEach((node) => {
+    if (node.closest(".compact-mobile-card-head, .profile-quick-actions, .row-actions")) return;
+    if (node.children.length > 0) return;
+    const text = normalizeText(node.textContent ?? "");
+    if (needles.some((needle) => needle && text.includes(needle))) node.classList.add("mobile-duplicate-contact");
   });
 }
 
@@ -260,7 +299,7 @@ function createGenderSelect(profile: ServerPhotoProfile | null) {
   return select;
 }
 
-function createPhotoButton(profile: ServerPhotoProfile, size: "small" | "large" | "list") {
+function createPhotoButton(profile: ServerPhotoProfile, size: "small" | "large" | "list" | "mobile") {
   const button = document.createElement("button");
   button.className = `enhanced-profile-photo enhanced-profile-photo-${size}`;
   button.type = "button";
@@ -293,6 +332,7 @@ function openPhotoDialog(profile: ServerPhotoProfile) {
       </div>
       <div class="profile-photo-crop-tools" hidden>
         <label>Zoom <input type="range" min="1" max="2.5" step="0.05" value="1" data-photo-zoom /></label>
+        <p>Mueve la foto con el dedo o mouse para escoger el encuadre.</p>
       </div>
       <div class="profile-photo-dialog-actions">
         <button class="btn btn-secondary" type="button" data-photo-pick>Subir nueva</button>
@@ -314,8 +354,8 @@ function openPhotoDialog(profile: ServerPhotoProfile) {
   if (!preview || !zoom || !save || !tools) return;
 
   renderDialogPreview(preview, profile);
-  let selectedImage: HTMLImageElement | null = null;
-  let selectedFileName = "profile.jpg";
+  const crop: CropState = { image: null, fileName: "profile.jpg", zoom: 1, offsetX: 0, offsetY: 0 };
+  enablePreviewDrag(preview, crop);
 
   overlay.querySelector<HTMLButtonElement>("[data-photo-pick]")?.addEventListener("click", () => {
     const input = document.createElement("input");
@@ -324,26 +364,66 @@ function openPhotoDialog(profile: ServerPhotoProfile) {
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return;
-      selectedFileName = file.name;
+      crop.fileName = file.name;
+      crop.offsetX = 0;
+      crop.offsetY = 0;
+      crop.zoom = 1;
+      zoom.value = "1";
       const url = URL.createObjectURL(file);
-      selectedImage = new Image();
-      selectedImage.onload = () => URL.revokeObjectURL(url);
-      selectedImage.src = url;
+      crop.image = new Image();
+      crop.image.onload = () => URL.revokeObjectURL(url);
+      crop.image.src = url;
       preview.innerHTML = `<img src="${escapeAttr(url)}" alt="${escapeAttr(profile.full_name)}" />`;
       tools.hidden = false;
       save.hidden = false;
-      updatePreviewZoom(preview, zoom.value);
+      updatePreviewTransform(preview, crop);
     };
     input.click();
   });
 
-  zoom.addEventListener("input", () => updatePreviewZoom(preview, zoom.value));
+  zoom.addEventListener("input", () => {
+    crop.zoom = Number(zoom.value);
+    updatePreviewTransform(preview, crop);
+  });
   save.addEventListener("click", async () => {
-    if (!selectedImage) return;
-    const blob = await cropImageForId(selectedImage, Number(zoom.value));
-    await saveProfilePhoto(profile, blob, selectedFileName);
+    if (!crop.image) return;
+    const blob = await cropImageForId(crop.image, crop.zoom, crop.offsetX, crop.offsetY, preview);
+    await saveProfilePhoto(profile, blob, crop.fileName);
     close();
   });
+}
+
+function enablePreviewDrag(preview: HTMLElement, crop: CropState) {
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let originX = 0;
+  let originY = 0;
+
+  preview.addEventListener("pointerdown", (event) => {
+    if (!crop.image) return;
+    dragging = true;
+    startX = event.clientX;
+    startY = event.clientY;
+    originX = crop.offsetX;
+    originY = crop.offsetY;
+    preview.setPointerCapture(event.pointerId);
+  });
+
+  preview.addEventListener("pointermove", (event) => {
+    if (!dragging) return;
+    crop.offsetX = originX + event.clientX - startX;
+    crop.offsetY = originY + event.clientY - startY;
+    updatePreviewTransform(preview, crop);
+  });
+
+  const stopDrag = (event: PointerEvent) => {
+    if (!dragging) return;
+    dragging = false;
+    preview.releasePointerCapture(event.pointerId);
+  };
+  preview.addEventListener("pointerup", stopDrag);
+  preview.addEventListener("pointercancel", stopDrag);
 }
 
 function renderDialogPreview(preview: HTMLElement, profile: ServerPhotoProfile) {
@@ -352,12 +432,13 @@ function renderDialogPreview(preview: HTMLElement, profile: ServerPhotoProfile) 
     : `<span>${getInitials(profile.full_name)}</span>`;
 }
 
-function updatePreviewZoom(preview: HTMLElement, zoom: string) {
+function updatePreviewTransform(preview: HTMLElement, crop: CropState) {
   const image = preview.querySelector<HTMLImageElement>("img");
-  if (image) image.style.transform = `scale(${zoom})`;
+  if (!image) return;
+  image.style.transform = `translate(${crop.offsetX}px, ${crop.offsetY}px) scale(${crop.zoom})`;
 }
 
-function cropImageForId(image: HTMLImageElement, zoom: number) {
+function cropImageForId(image: HTMLImageElement, zoom: number, offsetX: number, offsetY: number, preview: HTMLElement) {
   const canvas = document.createElement("canvas");
   canvas.width = 600;
   canvas.height = 750;
@@ -375,8 +456,10 @@ function cropImageForId(image: HTMLImageElement, zoom: number) {
 
   sourceWidth = Math.max(1, sourceWidth / zoom);
   sourceHeight = Math.max(1, sourceHeight / zoom);
-  const sourceX = (image.naturalWidth - sourceWidth) / 2;
-  const sourceY = (image.naturalHeight - sourceHeight) / 2;
+
+  const previewRect = preview.getBoundingClientRect();
+  const sourceX = clamp((image.naturalWidth - sourceWidth) / 2 - (offsetX / Math.max(1, previewRect.width)) * sourceWidth, 0, image.naturalWidth - sourceWidth);
+  const sourceY = clamp((image.naturalHeight - sourceHeight) / 2 - (offsetY / Math.max(1, previewRect.height)) * sourceHeight, 0, image.naturalHeight - sourceHeight);
   context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
 
   return new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob ?? new Blob()), "image/jpeg", 0.9));
@@ -453,4 +536,8 @@ function getInitials(name: string) {
 
 function escapeAttr(value: string) {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
