@@ -37,7 +37,7 @@
 }
 
 .version-label::after {
-  content: "Version 0.3.21";
+  content: "Version 0.3.22";
   font-size: 13px;
   font-weight: 800;
 }
