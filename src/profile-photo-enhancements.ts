@@ -31,21 +31,24 @@ export function initProfilePhotoEnhancements() {
 
 async function refreshProfiles() {
   if (loadingProfiles) return loadingProfiles;
-  loadingProfiles = supabase
-    .from("server_profiles")
-    .select("id, full_name, phone, email, address, gender, photo_url")
-    .order("full_name")
-    .then(({ data, error }) => {
-      if (error) throw error;
-      profiles = ((data ?? []) as ServerPhotoProfile[]).map((profile) => ({
-        ...profile,
-        gender: normalizeGender(profile.gender),
-      }));
-    })
-    .finally(() => {
-      loadingProfiles = null;
-    });
+  loadingProfiles = loadProfiles();
   return loadingProfiles;
+}
+
+async function loadProfiles() {
+  try {
+    const { data, error } = await supabase
+      .from("server_profiles")
+      .select("id, full_name, phone, email, address, gender, photo_url")
+      .order("full_name");
+    if (error) throw error;
+    profiles = ((data ?? []) as ServerPhotoProfile[]).map((profile) => ({
+      ...profile,
+      gender: normalizeGender(profile.gender),
+    }));
+  } finally {
+    loadingProfiles = null;
+  }
 }
 
 function enhanceProfilePhotos() {
