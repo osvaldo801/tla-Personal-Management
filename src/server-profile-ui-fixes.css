@@ -1,0 +1,21 @@
+.version-label::after {
+  content: "Version 0.3.23" !important;
+}
+
+.profile-editor .profile-extra-field.field-wide {
+  grid-column: 1 / -1;
+}
+
+.profile-editor .profile-extra-field textarea {
+  width: 100%;
+  min-height: 92px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.desktop-profile-table .profile-quick-actions .quick-contact svg,
+.quick-contact-actions svg {
+  display: block;
+}
