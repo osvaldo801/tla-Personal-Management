@@ -7,6 +7,7 @@ import { OrganizationProvider } from "./providers/OrganizationProvider";
 import { initIdCardScanner } from "./id-card-scanner";
 import { initProfilePhotoEnhancements } from "./profile-photo-enhancements";
 import { initServerProfileUiFixes } from "./server-profile-ui-fixes";
+import { initServerTableColumnFixes } from "./server-table-column-fixes";
 import { initStaleProfilePhotoCleanup } from "./stale-profile-photo-cleanup";
 import "./styles.css";
 import "./analytics.css";
@@ -21,6 +22,7 @@ const queryClient = new QueryClient();
 initProfilePhotoEnhancements();
 initStaleProfilePhotoCleanup();
 initServerProfileUiFixes();
+initServerTableColumnFixes();
 initIdCardScanner();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

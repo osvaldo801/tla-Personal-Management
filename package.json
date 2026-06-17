@@ -1,7 +1,7 @@
 {
   "name": "tla-people-service-management",
   "private": true,
-  "version": "0.3.24",
+  "version": "0.3.25",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,8 @@
     "@zxing/library": "^0.21.3",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",

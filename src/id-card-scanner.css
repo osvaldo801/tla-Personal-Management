@@ -1,5 +1,12 @@
 .version-label::after {
-  content: "Version 0.3.24" !important;
+  content: "Version 0.3.25" !important;
+}
+
+.id-scan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.25rem 0 1rem;
 }
 
 .id-scan-button {
@@ -7,7 +14,6 @@
   align-items: center;
   gap: 0.45rem;
   width: fit-content;
-  margin: 0.25rem 0 1rem;
 }
 
 .id-scan-button svg {
@@ -84,12 +90,20 @@
   position: absolute;
   left: 7%;
   right: 7%;
-  top: 32%;
-  height: 36%;
   border: 3px solid #10b981;
   border-radius: 8px;
   box-shadow: 0 0 0 999px rgba(2, 6, 23, 0.34);
   pointer-events: none;
+}
+
+.id-scanner-frame-barcode {
+  top: 32%;
+  height: 36%;
+}
+
+.id-scanner-frame-ocr {
+  top: 12%;
+  height: 76%;
 }
 
 .id-scanner-status {
@@ -135,15 +149,26 @@
     aspect-ratio: 4 / 5;
   }
 
-  .id-scanner-frame {
+  .id-scanner-frame-barcode {
     left: 8%;
     right: 8%;
     top: 36%;
     height: 28%;
   }
 
+  .id-scanner-frame-ocr {
+    left: 7%;
+    right: 7%;
+    top: 10%;
+    height: 80%;
+  }
+
   .id-scanner-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .id-scanner-actions [data-id-capture] {
+    grid-column: 1 / -1;
   }
 }
