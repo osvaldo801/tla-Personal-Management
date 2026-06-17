@@ -54,14 +54,14 @@ function openScanner(form: HTMLFormElement) {
   overlay.className = "id-scanner-dialog";
   overlay.innerHTML = `
     <div class="id-scanner-card" role="dialog" aria-modal="true">
-      <button class="id-scanner-close" type="button" aria-label="Cerrar">×</button>
+      <button class="id-scanner-close" type="button" aria-label="Cerrar">x</button>
       <h2>Escanear ID</h2>
-      <p class="id-scanner-help">Usa la parte de atrás del ID. Limpia el lente de la cámara, busca buena luz y mantén el código dentro del cuadro.</p>
+      <p class="id-scanner-help">Usa el codigo de barras de atras del ID. Limpia el lente de la camara, busca buena luz y mantén el codigo dentro del cuadro.</p>
       <div class="id-scanner-video-wrap">
         <video class="id-scanner-video" muted playsinline></video>
         <div class="id-scanner-frame"></div>
       </div>
-      <p class="id-scanner-status">Abriendo cámara...</p>
+      <p class="id-scanner-status">Abriendo camara...</p>
       <div class="id-scanner-actions">
         <button class="btn btn-secondary" type="button" data-id-rescan>Reintentar</button>
         <button class="btn btn-primary" type="button" data-id-close>Cerrar</button>
@@ -93,12 +93,12 @@ function openScanner(form: HTMLFormElement) {
     if (!video) return;
     found = false;
     scanStartedAt = Date.now();
-    setStatus("Apunta al código de atrás del ID. Intentando encender la luz del teléfono...", "normal");
+    setStatus("Apunta al codigo de atras del ID. Intentando encender la luz del telefono...", "normal");
 
     try {
       controls?.stop();
       stopVideo(video);
-      const hints = new Map();
+      const hints = new Map<DecodeHintType, BarcodeFormat[]>();
       hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.PDF_417]);
       const reader = new BrowserMultiFormatReader(hints, 400);
       controls = await reader.decodeFromConstraints(
@@ -109,23 +109,23 @@ function openScanner(form: HTMLFormElement) {
           found = true;
           const parsed = parseAamva(result.getText());
           if (!parsed.fullName && !parsed.birthDate && !parsed.address) {
-            setStatus("El código se detectó, pero no se pudo leer con claridad. Limpia el lente, mejora la luz y vuelve a intentarlo.", "warning");
+            setStatus("El codigo se detecto, pero no se pudo leer con claridad. Limpia el lente, mejora la luz y vuelve a intentarlo.", "warning");
             found = false;
             return;
           }
           fillFormFromId(form, parsed);
-          setStatus("Datos leídos correctamente. Revisa la información antes de guardar.", "success");
+          setStatus("Datos leidos correctamente. Revisa la informacion antes de guardar.", "success");
           window.setTimeout(close, 850);
         },
       );
       await enableTorch(video);
       window.setTimeout(() => {
         if (!found && Date.now() - scanStartedAt >= 6500) {
-          setStatus("No se lee claro todavía. Limpia el lente, enciende más luz si puedes y evita reflejos sobre el código.", "warning");
+          setStatus("No se lee claro todavia. Limpia el lente, enciende mas luz si puedes y evita reflejos sobre el codigo.", "warning");
         }
       }, 7000);
     } catch (error) {
-      setStatus("No pude abrir la cámara o leer el código. Da permiso a la cámara, mejora la luz y vuelve a intentarlo.", "warning");
+      setStatus("No pude abrir la camara o leer el codigo. Da permiso a la camara, limpia el lente, mejora la luz y vuelve a intentarlo.", "warning");
     }
   };
 
@@ -142,7 +142,10 @@ async function enableTorch(video: HTMLVideoElement | null) {
   const stream = video?.srcObject instanceof MediaStream ? video.srcObject : null;
   const track = stream?.getVideoTracks()[0];
   if (!track) return;
-  const capabilities = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+  const torchTrack = track as MediaStreamTrack & {
+    getCapabilities?: () => MediaTrackCapabilities & { torch?: boolean };
+  };
+  const capabilities = torchTrack.getCapabilities?.();
   if (!capabilities?.torch) return;
   await track.applyConstraints({ advanced: [{ torch: true } as MediaTrackConstraintSet] });
 }
@@ -186,8 +189,7 @@ function fillFormFromId(form: HTMLFormElement, parsed: ParsedId) {
 
 function setFieldValue(form: HTMLFormElement, labelText: string, value: string) {
   if (!value) return;
-  const field = findLabel(form, labelText);
-  const control = field?.querySelector<HTMLInputElement | HTMLTextAreaElement>("input, textarea");
+  const control = findControlForLabel<HTMLInputElement | HTMLTextAreaElement>(form, labelText, "input, textarea");
   if (!control) return;
   control.value = value;
   control.dispatchEvent(new Event("input", { bubbles: true }));
@@ -196,11 +198,31 @@ function setFieldValue(form: HTMLFormElement, labelText: string, value: string) 
 
 function setSelectByVisibleLabel(form: HTMLFormElement, labelText: string, value: string) {
   if (!value) return;
-  const field = findLabel(form, labelText);
-  const control = field?.querySelector<HTMLSelectElement>("select");
+  const control = findControlForLabel<HTMLSelectElement>(form, labelText, "select");
   if (!control) return;
   control.value = value;
   control.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function findControlForLabel<T extends HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+  form: HTMLFormElement,
+  labelText: string,
+  selector: string,
+): T | null {
+  const label = findLabel(form, labelText);
+  if (!label) return null;
+  const nested = label.querySelector<T>(selector);
+  if (nested) return nested;
+  if (label.htmlFor) {
+    const byId = form.querySelector<T>(`#${CSS.escape(label.htmlFor)}`);
+    if (byId) return byId;
+  }
+  const parentControl = label.parentElement?.querySelector<T>(selector);
+  if (parentControl) return parentControl;
+  const siblingControl = label.nextElementSibling?.matches(selector)
+    ? (label.nextElementSibling as T)
+    : label.nextElementSibling?.querySelector<T>(selector);
+  return siblingControl ?? null;
 }
 
 function findLabel(form: HTMLFormElement, labelText: string) {
