@@ -15,6 +15,9 @@ type ScannerControls = {
   stop: () => void;
 };
 
+type TorchCapabilities = MediaTrackCapabilities & { torch?: boolean };
+type TorchConstraint = MediaTrackConstraintSet & { torch?: boolean };
+
 let observerStarted = false;
 let enhanceTimer = 0;
 
@@ -100,7 +103,7 @@ function openScanner(form: HTMLFormElement) {
       stopVideo(video);
       const hints = new Map<DecodeHintType, BarcodeFormat[]>();
       hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.PDF_417]);
-      const reader = new BrowserMultiFormatReader(hints, 400);
+      const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 400 });
       controls = await reader.decodeFromConstraints(
         { video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
         video,
@@ -142,12 +145,9 @@ async function enableTorch(video: HTMLVideoElement | null) {
   const stream = video?.srcObject instanceof MediaStream ? video.srcObject : null;
   const track = stream?.getVideoTracks()[0];
   if (!track) return;
-  const torchTrack = track as MediaStreamTrack & {
-    getCapabilities?: () => MediaTrackCapabilities & { torch?: boolean };
-  };
-  const capabilities = torchTrack.getCapabilities?.();
+  const capabilities = track.getCapabilities?.() as TorchCapabilities | undefined;
   if (!capabilities?.torch) return;
-  await track.applyConstraints({ advanced: [{ torch: true } as MediaTrackConstraintSet] });
+  await track.applyConstraints({ advanced: [{ torch: true } as TorchConstraint] });
 }
 
 function stopVideo(video: HTMLVideoElement | null) {
