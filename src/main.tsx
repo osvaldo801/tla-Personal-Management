@@ -5,17 +5,20 @@ import { App } from "./App";
 import { AuthProvider } from "./providers/AuthProvider";
 import { OrganizationProvider } from "./providers/OrganizationProvider";
 import { initProfilePhotoEnhancements } from "./profile-photo-enhancements";
+import { initServerProfileUiFixes } from "./server-profile-ui-fixes";
 import { initStaleProfilePhotoCleanup } from "./stale-profile-photo-cleanup";
 import "./styles.css";
 import "./analytics.css";
 import "./admin.css";
 import "./ui-additions.css";
 import "./layout-overrides.css";
+import "./server-profile-ui-fixes.css";
 
 const queryClient = new QueryClient();
 
 initProfilePhotoEnhancements();
 initStaleProfilePhotoCleanup();
+initServerProfileUiFixes();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
