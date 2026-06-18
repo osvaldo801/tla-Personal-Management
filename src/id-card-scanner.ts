@@ -15,7 +15,7 @@ type ScannerControls = {
 const aamvaCodes = [
   "DCA", "DCB", "DCD", "DBA", "DCS", "DAC", "DAD", "DBD", "DBB", "DBC", "DAY", "DAU", "DAG", "DAI", "DAJ", "DAK",
   "DAQ", "DCF", "DCG", "DCH", "DAH", "DAZ", "DCI", "DCJ", "DCK", "DDB", "DDC", "DDD", "DAW", "DAX", "DDH", "DDI",
-  "DDJ", "ZVA",
+  "DDJ", "DDA", "DDE", "DDF", "DDG", "ZVA",
 ];
 
 let observerStarted = false;
@@ -124,7 +124,11 @@ function openOcrScanner(form: HTMLFormElement) {
       setStatus("Leyendo texto del ID. Manten esta ventana abierta...", "normal");
       try {
         const tesseract = await import("tesseract.js");
-        const result = await tesseract.recognize(canvas, "eng");
+        const preparedCanvas = prepareOcrCanvas(canvas);
+        const result = await tesseract.recognize(preparedCanvas, "eng", {
+          tessedit_pageseg_mode: "6",
+          tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 #.,/-",
+        });
         const parsed = parseFrontOcr(result.data.text);
         if (!hasUsefulData(parsed)) {
           setStatus("No se pudo leer con claridad. Limpia el lente, busca mejores condiciones de luz y evita reflejos sobre el ID.", "warning");
@@ -283,6 +287,32 @@ function parseFrontOcr(rawText: string): ParsedId {
   return { address, birthDate, fullName };
 }
 
+function prepareOcrCanvas(source: HTMLCanvasElement) {
+  const scale = 1.6;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(source.width * scale);
+  canvas.height = Math.round(source.height * scale);
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return source;
+
+  context.imageSmoothingEnabled = true;
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  const image = context.getImageData(0, 0, canvas.width, canvas.height);
+  const data = image.data;
+
+  for (let index = 0; index < data.length; index += 4) {
+    const gray = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+    const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.45 + 128));
+    const value = contrasted > 176 ? 255 : contrasted < 92 ? 0 : contrasted;
+    data[index] = value;
+    data[index + 1] = value;
+    data[index + 2] = value;
+  }
+
+  context.putImageData(image, 0, 0);
+  return canvas;
+}
+
 function parseOcrName(lines: string[]) {
   const ignored = /DRIVER|LICENSE|LICENCE|IDENTIFICATION|CARD|CALIFORNIA|USA|CLASS|EXP|DOB|SEX|EYES|HAIR|HEIGHT|WT|ISS|DD|END|REST/i;
   const candidates = lines
@@ -373,7 +403,11 @@ function hasUsefulData(parsed: ParsedId) {
 }
 
 function cleanName(value: string) {
-  return value
+  const withoutAamvaNoise = value
+    .replace(/\bD[A-Z]{2,3}[A-Z0-9-]*/g, " ")
+    .replace(/\b[A-Z]{2,4}N\b/g, " ");
+
+  return withoutAamvaNoise
     .split(/[, ]+/)
     .map((part) => part.trim())
     .filter(Boolean)
