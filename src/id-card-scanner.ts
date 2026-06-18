@@ -13,7 +13,7 @@ type ScannerControls = {
 };
 
 const aamvaCodes = [
-  "DCA", "DCB", "DCD", "DBA", "DCS", "DAC", "DAD", "DBD", "DBB", "DBC", "DAY", "DAU", "DAG", "DAI", "DAJ", "DAK",
+  "DCA", "DCB", "DCD", "DBA", "DCS", "DAC", "DAD", "DBD", "DBB", "DBC", "DAY", "DAU", "DAH", "DAU", "DAG", "DAI", "DAJ", "DAK",
   "DAQ", "DCF", "DCG", "DCH", "DAH", "DAZ", "DCI", "DCJ", "DCK", "DDB", "DDC", "DDD", "DAW", "DAX", "DDH", "DDI",
   "DDJ", "DDA", "DDE", "DDF", "DDG", "ZVA",
 ];
@@ -125,10 +125,7 @@ function openOcrScanner(form: HTMLFormElement) {
       try {
         const tesseract = await import("tesseract.js");
         const preparedCanvas = prepareOcrCanvas(canvas);
-        const result = await tesseract.recognize(preparedCanvas, "eng", {
-          tessedit_pageseg_mode: "6",
-          tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 #.,/-",
-        });
+        const result = await tesseract.recognize(preparedCanvas, "eng");
         const parsed = parseFrontOcr(result.data.text);
         if (!hasUsefulData(parsed)) {
           setStatus("No se pudo leer con claridad. Limpia el lente, busca mejores condiciones de luz y evita reflejos sobre el ID.", "warning");
