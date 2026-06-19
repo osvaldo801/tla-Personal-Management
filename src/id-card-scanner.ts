@@ -13,7 +13,7 @@ type ScannerControls = {
 };
 
 const aamvaCodes = [
-  "DCA", "DCB", "DCD", "DBA", "DCS", "DAC", "DAD", "DBD", "DBB", "DBC", "DAY", "DAU", "DAH", "DAU", "DAG", "DAI", "DAJ", "DAK",
+  "DCA", "DCB", "DCD", "DBA", "DCS", "DAC", "DAD", "DBD", "DBB", "DBC", "DAY", "DAU", "DAG", "DAI", "DAJ", "DAK",
   "DAQ", "DCF", "DCG", "DCH", "DAH", "DAZ", "DCI", "DCJ", "DCK", "DDB", "DDC", "DDD", "DAW", "DAX", "DDH", "DDI",
   "DDJ", "DDA", "DDE", "DDF", "DDG", "ZVA",
 ];
@@ -50,13 +50,7 @@ function addScannerButtons() {
     barcodeButton.innerHTML = `${scanIcon()} Escanear codigo`;
     barcodeButton.addEventListener("click", () => openBarcodeScanner(form));
 
-    const ocrButton = document.createElement("button");
-    ocrButton.className = "btn btn-secondary id-scan-button";
-    ocrButton.type = "button";
-    ocrButton.innerHTML = `${ocrIcon()} Leer frente OCR`;
-    ocrButton.addEventListener("click", () => openOcrScanner(form));
-
-    wrap.append(barcodeButton, ocrButton);
+    wrap.append(barcodeButton);
     title?.after(wrap);
   });
 }
@@ -114,38 +108,9 @@ function openBarcodeScanner(form: HTMLFormElement) {
   });
 }
 
-function openOcrScanner(form: HTMLFormElement) {
-  openCameraDialog({
-    title: "Leer frente del ID",
-    help: "Enfoca el frente del ID completo, sin reflejos. Limpia el lente de la camara y usa buena luz antes de capturar.",
-    frameClass: "id-scanner-frame-ocr",
-    captureLabel: "Leer frente",
-    onCapture: async ({ canvas, setStatus, close }) => {
-      setStatus("Leyendo texto del ID. Manten esta ventana abierta...", "normal");
-      try {
-        const tesseract = await import("tesseract.js");
-        const preparedCanvas = prepareOcrCanvas(canvas);
-        const result = await tesseract.recognize(preparedCanvas, "eng");
-        const parsed = parseFrontOcr(result.data.text);
-        if (!hasUsefulData(parsed)) {
-          setStatus("No se pudo leer con claridad. Limpia el lente, busca mejores condiciones de luz y evita reflejos sobre el ID.", "warning");
-          return;
-        }
-        fillFormFromId(form, parsed);
-        setStatus("Datos OCR leidos. Revisa y corrige cualquier detalle antes de guardar.", "success");
-        window.setTimeout(close, 900);
-      } catch (error) {
-        setStatus("No se pudo completar el OCR. Limpia el lente, mejora la luz y vuelve a intentarlo.", "warning");
-      }
-    },
-  });
-}
-
 type CameraDialogOptions = {
-  captureLabel?: string;
   frameClass: string;
   help: string;
-  onCapture?: (context: { canvas: HTMLCanvasElement; close: () => void; setStatus: StatusSetter }) => Promise<void>;
   onReady?: (context: { close: () => void; setStatus: StatusSetter; video: HTMLVideoElement }) => Promise<(() => void) | void>;
   title: string;
 };
@@ -168,7 +133,6 @@ function openCameraDialog(options: CameraDialogOptions) {
       </div>
       <p class="id-scanner-status">Abriendo camara...</p>
       <div class="id-scanner-actions">
-        ${options.onCapture ? `<button class="btn btn-secondary" type="button" data-id-capture>${escapeHtml(options.captureLabel ?? "Capturar")}</button>` : ""}
         <button class="btn btn-secondary" type="button" data-id-rescan>Reintentar</button>
         <button class="btn btn-primary" type="button" data-id-close>Cerrar</button>
       </div>
@@ -179,7 +143,6 @@ function openCameraDialog(options: CameraDialogOptions) {
   const status = overlay.querySelector<HTMLElement>(".id-scanner-status");
   const closeButtons = overlay.querySelectorAll<HTMLButtonElement>(".id-scanner-close, [data-id-close]");
   const rescan = overlay.querySelector<HTMLButtonElement>("[data-id-rescan]");
-  const capture = overlay.querySelector<HTMLButtonElement>("[data-id-capture]");
   let cleanup: (() => void) | null = null;
 
   const setStatus: StatusSetter = (message, tone = "normal") => {
@@ -207,7 +170,6 @@ function openCameraDialog(options: CameraDialogOptions) {
       video.srcObject = stream;
       await video.play();
       cleanup = (await options.onReady?.({ video, setStatus, close })) ?? null;
-      if (!options.onReady) setStatus("Coloca el frente del ID dentro del cuadro y presiona Leer frente.", "normal");
     } catch (error) {
       setStatus("No pude abrir la camara. Da permiso a la camara, limpia el lente y vuelve a intentarlo.", "warning");
     }
@@ -215,14 +177,6 @@ function openCameraDialog(options: CameraDialogOptions) {
 
   closeButtons.forEach((button) => button.addEventListener("click", close));
   rescan?.addEventListener("click", start);
-  capture?.addEventListener("click", async () => {
-    if (!video || !options.onCapture) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
-    canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
-    await options.onCapture({ canvas, setStatus, close });
-  });
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) close();
   });
@@ -269,70 +223,6 @@ function parseAamvaFields(raw: string) {
   });
 
   return fields;
-}
-
-function parseFrontOcr(rawText: string): ParsedId {
-  const text = rawText.replace(/\r/g, "\n").replace(/[|]/g, " ").replace(/[ \t]+/g, " ");
-  const lines = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const birthDate = parseOcrDate(text);
-  const fullName = parseOcrName(lines);
-  const address = parseOcrAddress(lines);
-
-  return { address, birthDate, fullName };
-}
-
-function prepareOcrCanvas(source: HTMLCanvasElement) {
-  const scale = 1.6;
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(source.width * scale);
-  canvas.height = Math.round(source.height * scale);
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  if (!context) return source;
-
-  context.imageSmoothingEnabled = true;
-  context.drawImage(source, 0, 0, canvas.width, canvas.height);
-  const image = context.getImageData(0, 0, canvas.width, canvas.height);
-  const data = image.data;
-
-  for (let index = 0; index < data.length; index += 4) {
-    const gray = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
-    const contrasted = Math.max(0, Math.min(255, (gray - 128) * 1.45 + 128));
-    const value = contrasted > 176 ? 255 : contrasted < 92 ? 0 : contrasted;
-    data[index] = value;
-    data[index + 1] = value;
-    data[index + 2] = value;
-  }
-
-  context.putImageData(image, 0, 0);
-  return canvas;
-}
-
-function parseOcrName(lines: string[]) {
-  const ignored = /DRIVER|LICENSE|LICENCE|IDENTIFICATION|CARD|CALIFORNIA|USA|CLASS|EXP|DOB|SEX|EYES|HAIR|HEIGHT|WT|ISS|DD|END|REST/i;
-  const candidates = lines
-    .map((line) => line.replace(/[^A-Z\s.-]/gi, " ").replace(/\s+/g, " ").trim())
-    .filter((line) => line.length >= 5 && !ignored.test(line) && /[A-Z]{2,}/i.test(line));
-  const likely = candidates.find((line) => line.split(" ").length >= 2) ?? "";
-  return cleanName(likely);
-}
-
-function parseOcrAddress(lines: string[]) {
-  const streetIndex = lines.findIndex((line) => /\d{2,}\s+[A-Z0-9]/i.test(line) && !/DOB|EXP|ISS|DD/i.test(line));
-  if (streetIndex < 0) return "";
-  const street = cleanAddress(lines[streetIndex]);
-  const cityLine = lines.slice(streetIndex + 1, streetIndex + 4).find((line) => /[A-Z]{2}[\s,]+\d{5}/i.test(line) || /\d{5}/.test(line));
-  return [street, cleanAddress(cityLine ?? "")].filter(Boolean).join(", ");
-}
-
-function parseOcrDate(text: string) {
-  const match = text.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/);
-  if (!match) return "";
-  const month = match[1].padStart(2, "0");
-  const day = match[2].padStart(2, "0");
-  return `${match[3]}-${month}-${day}`;
 }
 
 function fillFormFromId(form: HTMLFormElement, parsed: ParsedId) {
@@ -419,7 +309,11 @@ function cleanAddress(value: string) {
 function formatAamvaDate(value: string) {
   const digits = value.replace(/\D/g, "");
   if (digits.length !== 8) return "";
-  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  const firstFour = Number(digits.slice(0, 4));
+  if (firstFour >= 1900 && firstFour <= 2099) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  }
+  return `${digits.slice(4, 8)}-${digits.slice(0, 2)}-${digits.slice(2, 4)}`;
 }
 
 function formatGender(value: string): ParsedId["gender"] {
@@ -445,8 +339,4 @@ function escapeHtml(value: string) {
 
 function scanIcon() {
   return '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>';
-}
-
-function ocrIcon() {
-  return '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a2 2 0 0 1 2-2h2"/><path d="M16 3h2a2 2 0 0 1 2 2v2"/><path d="M20 17v2a2 2 0 0 1-2 2h-2"/><path d="M8 21H6a2 2 0 0 1-2-2v-2"/><path d="M7 8h10"/><path d="M7 12h7"/><path d="M7 16h5"/></svg>';
 }
