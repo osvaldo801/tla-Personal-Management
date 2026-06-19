@@ -1,5 +1,5 @@
 .version-label::after {
-  content: "Version 0.3.26" !important;
+  content: "Version 0.3.27" !important;
 }
 
 .id-scan-actions {
@@ -101,11 +101,6 @@
   height: 36%;
 }
 
-.id-scanner-frame-ocr {
-  top: 12%;
-  height: 76%;
-}
-
 .id-scanner-status {
   margin: 1rem 0 0;
   border: 1px solid #bfdbfe;
@@ -156,19 +151,7 @@
     height: 28%;
   }
 
-  .id-scanner-frame-ocr {
-    left: 7%;
-    right: 7%;
-    top: 10%;
-    height: 80%;
-  }
-
   .id-scanner-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .id-scanner-actions [data-id-capture] {
-    grid-column: 1 / -1;
+    display: flex;
   }
 }
