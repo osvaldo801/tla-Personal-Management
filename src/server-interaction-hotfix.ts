@@ -18,7 +18,6 @@ export function initServerInteractionHotfix() {
   };
 
   run();
-  document.addEventListener("click", protectClickTargets, true);
   const observer = new MutationObserver(run);
   observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 }
@@ -73,31 +72,29 @@ function protectDirectActions() {
   });
 }
 
-function protectClickTargets(event: MouseEvent) {
-  const target = event.target instanceof Element ? event.target : null;
-  if (!target?.closest(".quick-contact, .quick-contact-actions a, .enhanced-profile-photo, .row-actions button, .row-actions select")) return;
-  event.stopPropagation();
-}
-
 function translateServersCopy() {
   const activeLanguage = document.querySelector(".language-toggle button.active")?.textContent?.trim().toLowerCase();
   const isEnglish = activeLanguage === "en";
+  const heroTitle = Array.from(document.querySelectorAll<HTMLElement>("h1")).find((item) => {
+    const text = normalize(item.textContent ?? "");
+    return text === "servidores" || text === "servers";
+  });
+  if (heroTitle) heroTitle.textContent = isEnglish ? "SERVERS" : "SERVIDORES";
+
   const pairs = isEnglish
     ? new Map([
-        ["SERVIDORES", "SERVERS"],
         ["Servidores", "Servers"],
         ["Nuevo servidor", "New server"],
         ["Lista operativa de servidores y colaboradores.", "Operational list of servers and collaborators."],
-        ["Gesti\u00f3n", "Management"],
-        ["GESTI\u00d3N", "MANAGEMENT"],
+        ["Gestión", "Management"],
+        ["GESTIÓN", "MANAGEMENT"],
       ])
     : new Map([
-        ["SERVERS", "SERVIDORES"],
         ["Servers", "Servidores"],
         ["New server", "Nuevo servidor"],
         ["Operational list of servers and collaborators.", "Lista operativa de servidores y colaboradores."],
-        ["Management", "Gesti\u00f3n"],
-        ["MANAGEMENT", "GESTI\u00d3N"],
+        ["Management", "Gestión"],
+        ["MANAGEMENT", "GESTIÓN"],
       ]);
 
   document.querySelectorAll<HTMLElement>(".sidebar, .content").forEach((root) => {
