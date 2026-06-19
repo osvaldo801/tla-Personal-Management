@@ -5,6 +5,7 @@ import { App } from "./App";
 import { AuthProvider } from "./providers/AuthProvider";
 import { OrganizationProvider } from "./providers/OrganizationProvider";
 import { initIdCardScanner } from "./id-card-scanner";
+import { initProfilePhotoClickHotfix } from "./profile-photo-click-hotfix";
 import { initProfilePhotoEnhancements } from "./profile-photo-enhancements";
 import { initServerInteractionHotfix } from "./server-interaction-hotfix";
 import { initServerProfileUiFixes } from "./server-profile-ui-fixes";
@@ -21,6 +22,7 @@ import "./id-card-scanner.css";
 const queryClient = new QueryClient();
 
 initProfilePhotoEnhancements();
+initProfilePhotoClickHotfix();
 initStaleProfilePhotoCleanup();
 initServerProfileUiFixes();
 initServerTableColumnFixes();
