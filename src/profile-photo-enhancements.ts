@@ -90,38 +90,32 @@ function enhanceRows() {
 function simplifyServerTable() {
   document.querySelectorAll<HTMLTableElement>(".desktop-profile-table").forEach((table) => {
     const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>("thead th"));
-    const indexByText = (text: string) => headers.findIndex((header) => normalizeText(header.textContent ?? "").includes(text));
-    const lastCommentIndex = indexByText("ultimo comentario");
-    const typeIndex = indexByText("tipo");
-    const phoneIndex = indexByText("telefono");
-    const emailIndex = indexByText("email");
-
-    if (lastCommentIndex >= 0) hideTableColumn(table, lastCommentIndex);
+    const headerLabels = ["Nombre", "Clase", "Ministerio", "Departamento", "Estado", "Tipo", "Acciones"];
+    if (headers.length !== headerLabels.length || headers.some((header, index) => normalizeText(header.textContent ?? "") !== normalizeText(headerLabels[index]))) {
+      const headerRow = table.querySelector<HTMLTableRowElement>("thead tr");
+      if (headerRow) {
+        headerRow.replaceChildren(...headerLabels.map((label) => {
+          const th = document.createElement("th");
+          th.textContent = label;
+          return th;
+        }));
+      }
+    }
 
     table.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((row) => {
       const nameButton = row.querySelector<HTMLButtonElement>(".link-button");
       const profile = nameButton ? findProfile(row.textContent ?? "", nameButton.textContent ?? "") : findProfileByRow(row);
       const cells = Array.from(row.children) as HTMLTableCellElement[];
+      if (cells.length < 7) return;
 
-      if (typeIndex >= 0 && cells[typeIndex]) cells[typeIndex].textContent = abbreviateType(cells[typeIndex].textContent ?? "");
-      if (profile && phoneIndex >= 0 && cells[phoneIndex]) replaceCellWithIcon(cells[phoneIndex], createContactLink("phone", profile));
-      if (profile && emailIndex >= 0 && cells[emailIndex]) replaceCellWithIcon(cells[emailIndex], createContactLink("email", profile));
+      const actionCell = cells.find((cell) => Boolean(cell.querySelector(".row-actions"))) ?? cells[cells.length - 1];
+      const typeCell = cells[5];
+      typeCell.textContent = abbreviateType(typeCell.textContent ?? "");
+      row.replaceChildren(cells[0], cells[1], cells[2], cells[3], cells[4], typeCell, actionCell);
     });
-  });
-}
 
-function hideTableColumn(table: HTMLTableElement, index: number) {
-  table.querySelectorAll<HTMLTableRowElement>("tr").forEach((row) => {
-    const cell = row.children[index] as HTMLElement | undefined;
-    if (cell) cell.style.display = "none";
+    table.querySelectorAll<HTMLTableCellElement>("td[colspan]").forEach((cell) => cell.setAttribute("colspan", "7"));
   });
-}
-
-function replaceCellWithIcon(cell: HTMLTableCellElement, link: HTMLAnchorElement | null) {
-  if (cell.dataset.compactContact === "true") return;
-  cell.dataset.compactContact = "true";
-  cell.classList.add("compact-contact-cell");
-  cell.replaceChildren(link ?? emptyContactIcon());
 }
 
 function createQuickActions(profile: ServerPhotoProfile) {
@@ -170,13 +164,6 @@ function createContactLink(kind: "map" | "phone" | "text" | "email", profile: Se
 
   link.addEventListener("click", (event) => event.stopPropagation());
   return link;
-}
-
-function emptyContactIcon() {
-  const span = document.createElement("span");
-  span.className = "quick-contact quick-contact-empty";
-  span.textContent = "-";
-  return span;
 }
 
 function enhanceCards() {
