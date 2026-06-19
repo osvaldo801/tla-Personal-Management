@@ -6,6 +6,7 @@ import { AuthProvider } from "./providers/AuthProvider";
 import { OrganizationProvider } from "./providers/OrganizationProvider";
 import { initIdCardScanner } from "./id-card-scanner";
 import { initProfilePhotoEnhancements } from "./profile-photo-enhancements";
+import { initServerInteractionHotfix } from "./server-interaction-hotfix";
 import { initServerProfileUiFixes } from "./server-profile-ui-fixes";
 import { initServerTableColumnFixes } from "./server-table-column-fixes";
 import { initStaleProfilePhotoCleanup } from "./stale-profile-photo-cleanup";
@@ -23,6 +24,7 @@ initProfilePhotoEnhancements();
 initStaleProfilePhotoCleanup();
 initServerProfileUiFixes();
 initServerTableColumnFixes();
+initServerInteractionHotfix();
 initIdCardScanner();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
