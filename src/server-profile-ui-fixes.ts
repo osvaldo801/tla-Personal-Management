@@ -29,7 +29,6 @@ export function initServerProfileUiFixes() {
   const run = () => {
     window.clearTimeout(timer);
     timer = window.setTimeout(() => {
-      removeDuplicateContactColumns();
       normalizeDirectActionIcons();
       enhanceProfileEditor();
     }, 80);
@@ -39,26 +38,6 @@ export function initServerProfileUiFixes() {
   document.addEventListener("submit", handleProfileEditorSubmit, true);
   const observer = new MutationObserver(run);
   observer.observe(document.body, { childList: true, subtree: true });
-}
-
-function removeDuplicateContactColumns() {
-  document.querySelectorAll<HTMLTableElement>(".desktop-profile-table table").forEach((table) => {
-    const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>("thead th"));
-    const indexes = headers
-      .map((header, index) => ({ index, text: normalize(header.textContent ?? "") }))
-      .filter((item) => item.text === "telefono" || item.text === "email")
-      .map((item) => item.index)
-      .sort((a, b) => b - a);
-
-    indexes.forEach((index) => {
-      table.querySelectorAll<HTMLTableRowElement>("tr").forEach((row) => row.children[index]?.remove());
-    });
-
-    table.querySelectorAll<HTMLTableCellElement>("td[colspan]").forEach((cell) => {
-      const current = Number(cell.getAttribute("colspan") ?? "0");
-      if (current > 8) cell.setAttribute("colspan", "8");
-    });
-  });
 }
 
 function normalizeDirectActionIcons() {
