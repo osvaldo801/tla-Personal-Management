@@ -1,12 +1,12 @@
 .version-label::after {
-  content: "Version 0.3.36" !important;
+  content: "Version 0.3.37" !important;
 }
 
 @media (min-width: 901px) {
   .desktop-profile-table .table-scroll {
     max-height: calc(100vh - 360px) !important;
     overflow-y: auto !important;
-    overflow-x: hidden !important;
+    overflow-x: auto !important;
     scrollbar-gutter: stable both-edges !important;
   }
 
@@ -25,8 +25,8 @@
 
   .desktop-profile-table tr {
     display: grid !important;
-    grid-template-columns: minmax(310px, 1.45fr) minmax(104px, 0.55fr) minmax(155px, 0.85fr) minmax(165px, 0.9fr) minmax(104px, 0.58fr) minmax(68px, 0.38fr) minmax(244px, 0.95fr) !important;
-    column-gap: 0.35rem !important;
+    grid-template-columns: minmax(290px, 1.25fr) minmax(100px, 0.46fr) minmax(180px, 0.78fr) minmax(175px, 0.74fr) minmax(104px, 0.46fr) minmax(64px, 0.28fr) minmax(286px, 0.92fr) !important;
+    column-gap: 0.55rem !important;
     align-items: center !important;
     width: 100% !important;
   }
@@ -37,7 +37,7 @@
     box-sizing: border-box !important;
     width: auto !important;
     min-width: 0 !important;
-    padding: 1rem 0.65rem !important;
+    padding: 0.95rem 0.5rem !important;
     vertical-align: middle !important;
     white-space: normal !important;
     overflow-wrap: anywhere !important;
@@ -60,6 +60,7 @@
     width: auto !important;
     min-width: 0 !important;
     overflow: visible !important;
+    padding-right: 0.75rem !important;
   }
 
   .desktop-profile-table td[colspan] {
@@ -84,7 +85,7 @@
 
   .desktop-profile-table .server-name-wrap {
     min-width: 0 !important;
-    max-width: 200px !important;
+    max-width: 185px !important;
   }
 
   .desktop-profile-table .server-name-wrap .link-button {
@@ -103,7 +104,7 @@
   .desktop-profile-table .row-actions {
     display: flex !important;
     align-items: center !important;
-    justify-content: flex-start !important;
+    justify-content: flex-end !important;
     gap: 0.45rem !important;
     flex-wrap: nowrap !important;
     min-width: 0 !important;
@@ -111,8 +112,8 @@
   }
 
   .desktop-profile-table .row-actions select {
-    width: 108px !important;
-    min-width: 108px !important;
+    width: 110px !important;
+    min-width: 110px !important;
     pointer-events: auto !important;
   }
 
@@ -127,8 +128,8 @@
   }
 
   .desktop-profile-table .row-actions .btn-secondary {
-    min-width: 70px !important;
-    padding-inline: 0.65rem !important;
+    min-width: 72px !important;
+    padding-inline: 0.7rem !important;
   }
 
   .desktop-profile-table .row-actions .btn-danger {
@@ -159,8 +160,8 @@
 
 @media (min-width: 901px) and (max-width: 1280px) {
   .desktop-profile-table tr {
-    grid-template-columns: minmax(270px, 1.35fr) minmax(92px, 0.55fr) minmax(130px, 0.8fr) minmax(135px, 0.82fr) minmax(92px, 0.55fr) minmax(58px, 0.35fr) minmax(220px, 0.95fr) !important;
-    column-gap: 0.25rem !important;
+    grid-template-columns: minmax(260px, 1.2fr) minmax(88px, 0.42fr) minmax(140px, 0.66fr) minmax(138px, 0.62fr) minmax(92px, 0.42fr) minmax(56px, 0.25fr) minmax(258px, 0.9fr) !important;
+    column-gap: 0.4rem !important;
   }
 
   .desktop-profile-table th,
@@ -169,16 +170,16 @@
   }
 
   .desktop-profile-table .server-name-wrap {
-    max-width: 170px !important;
+    max-width: 155px !important;
   }
 
   .desktop-profile-table .row-actions select {
-    width: 98px !important;
-    min-width: 98px !important;
+    width: 104px !important;
+    min-width: 104px !important;
   }
 
   .desktop-profile-table .row-actions .btn-secondary {
-    min-width: 64px !important;
+    min-width: 68px !important;
   }
 }
 
