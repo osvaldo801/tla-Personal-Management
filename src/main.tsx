@@ -18,6 +18,7 @@ import "./ui-additions.css";
 import "./layout-overrides.css";
 import "./server-profile-ui-fixes.css";
 import "./id-card-scanner.css";
+import "./server-table-real-actions.css";
 
 const queryClient = new QueryClient();
 
