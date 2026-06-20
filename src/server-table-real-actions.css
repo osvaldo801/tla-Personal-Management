@@ -1,5 +1,5 @@
 .version-label::after {
-  content: "Version 0.3.32" !important;
+  content: "Version 0.3.33" !important;
 }
 
 .desktop-profile-table .table-scroll {
@@ -23,7 +23,7 @@
 
 .desktop-profile-table tr {
   display: grid !important;
-  grid-template-columns: minmax(260px, 1.8fr) 120px minmax(160px, 1fr) minmax(170px, 1fr) 120px 84px minmax(230px, 0.9fr) !important;
+  grid-template-columns: minmax(250px, 1.6fr) 118px minmax(150px, 1fr) minmax(150px, 1fr) 112px 76px 244px !important;
   align-items: center !important;
   width: 100% !important;
 }
@@ -45,6 +45,14 @@
 .desktop-profile-table th:nth-child(9),
 .desktop-profile-table td:nth-child(9) {
   display: none !important;
+}
+
+.desktop-profile-table th:nth-child(10),
+.desktop-profile-table td:nth-child(10) {
+  display: block !important;
+  grid-column: 7 !important;
+  width: auto !important;
+  min-width: 0 !important;
 }
 
 .desktop-profile-table tbody tr:nth-child(even) {
@@ -77,14 +85,14 @@
   display: flex !important;
   align-items: center !important;
   justify-content: flex-start !important;
-  gap: 0.55rem !important;
+  gap: 0.5rem !important;
   flex-wrap: nowrap !important;
   min-width: 0 !important;
 }
 
 .desktop-profile-table .row-actions select {
-  width: 118px !important;
-  min-width: 118px !important;
+  width: 112px !important;
+  min-width: 112px !important;
   pointer-events: auto !important;
 }
 
@@ -99,12 +107,17 @@
   pointer-events: auto !important;
 }
 
+.desktop-profile-table .row-actions .btn-secondary {
+  min-width: 72px !important;
+  padding-inline: 0.75rem !important;
+}
+
 .desktop-profile-table .row-actions .btn-danger {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 44px !important;
-  min-width: 44px !important;
+  width: 40px !important;
+  min-width: 40px !important;
   padding-inline: 0 !important;
 }
 
@@ -122,7 +135,12 @@
 
 @media (max-width: 1280px) {
   .desktop-profile-table tr {
-    grid-template-columns: 250px 110px 150px 150px 110px 78px 220px !important;
+    grid-template-columns: 240px 104px 140px 140px 104px 70px 232px !important;
+  }
+
+  .desktop-profile-table .row-actions select {
+    width: 104px !important;
+    min-width: 104px !important;
   }
 }
 
