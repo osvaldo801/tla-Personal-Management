@@ -15,8 +15,16 @@ export function initServerInteractionHotfix() {
   };
 
   run();
+  window.setInterval(run, 800);
+  document.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest(".language-toggle")) {
+      window.setTimeout(run, 80);
+      window.setTimeout(run, 300);
+    }
+  });
   const observer = new MutationObserver(run);
-  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
 }
 
 function ensureDeleteButtons() {
@@ -45,15 +53,18 @@ function protectDirectActions() {
 function translateServersCopy() {
   const activeLanguage = document.querySelector(".language-toggle button.active")?.textContent?.trim().toLowerCase();
   const isEnglish = activeLanguage === "en";
-  const heroTitle = Array.from(document.querySelectorAll<HTMLElement>("h1")).find((item) => {
-    const text = normalize(item.textContent ?? "");
-    return text === "servidores" || text === "servers";
+
+  document.querySelectorAll<HTMLElement>(".page-heading h1, .content h1").forEach((heading) => {
+    const normalized = normalize(heading.textContent ?? "");
+    if (normalized === "servidores" || normalized === "servers") {
+      heading.textContent = isEnglish ? "SERVERS" : "SERVIDORES";
+    }
   });
-  if (heroTitle) heroTitle.textContent = isEnglish ? "SERVERS" : "SERVIDORES";
 
   const pairs = isEnglish
     ? new Map([
         ["Servidores", "Servers"],
+        ["SERVIDORES", "SERVERS"],
         ["Nuevo servidor", "New server"],
         ["Lista operativa de servidores y colaboradores.", "Operational list of servers and collaborators."],
         ["Gestión", "Management"],
@@ -61,6 +72,7 @@ function translateServersCopy() {
       ])
     : new Map([
         ["Servers", "Servidores"],
+        ["SERVERS", "SERVIDORES"],
         ["New server", "Nuevo servidor"],
         ["Operational list of servers and collaborators.", "Lista operativa de servidores y colaboradores."],
         ["Management", "Gestión"],
