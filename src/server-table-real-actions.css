@@ -1,5 +1,5 @@
 .version-label::after {
-  content: "Version 0.3.37" !important;
+  content: "Version 0.3.38" !important;
 }
 
 @media (min-width: 901px) {
@@ -52,7 +52,8 @@
 
   .desktop-profile-table th:last-child,
   .desktop-profile-table td:last-child,
-  .desktop-profile-table td:has(.row-actions) {
+  .desktop-profile-table td:has(.row-actions),
+  .desktop-profile-table .server-actions-cell {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
