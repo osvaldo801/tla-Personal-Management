@@ -1,5 +1,5 @@
 .version-label::after {
-  content: "Version 0.3.31" !important;
+  content: "Version 0.3.32" !important;
 }
 
 .desktop-profile-table .table-scroll {
@@ -9,9 +9,33 @@
 }
 
 .desktop-profile-table table {
-  table-layout: fixed !important;
+  display: block !important;
   width: 100% !important;
-  min-width: 1120px !important;
+  min-width: 0 !important;
+  table-layout: auto !important;
+}
+
+.desktop-profile-table thead,
+.desktop-profile-table tbody {
+  display: block !important;
+  width: 100% !important;
+}
+
+.desktop-profile-table tr {
+  display: grid !important;
+  grid-template-columns: minmax(260px, 1.8fr) 120px minmax(160px, 1fr) minmax(170px, 1fr) 120px 84px minmax(230px, 0.9fr) !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.desktop-profile-table th,
+.desktop-profile-table td {
+  display: block !important;
+  width: auto !important;
+  min-width: 0 !important;
+  vertical-align: middle !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
 }
 
 .desktop-profile-table th:nth-child(7),
@@ -23,41 +47,6 @@
   display: none !important;
 }
 
-.desktop-profile-table th:nth-child(1),
-.desktop-profile-table td:nth-child(1) {
-  width: 340px !important;
-}
-
-.desktop-profile-table th:nth-child(2),
-.desktop-profile-table td:nth-child(2) {
-  width: 130px !important;
-}
-
-.desktop-profile-table th:nth-child(3),
-.desktop-profile-table td:nth-child(3),
-.desktop-profile-table th:nth-child(4),
-.desktop-profile-table td:nth-child(4) {
-  width: 210px !important;
-  white-space: normal !important;
-  overflow-wrap: anywhere !important;
-  word-break: normal !important;
-}
-
-.desktop-profile-table th:nth-child(5),
-.desktop-profile-table td:nth-child(5) {
-  width: 120px !important;
-}
-
-.desktop-profile-table th:nth-child(6),
-.desktop-profile-table td:nth-child(6) {
-  width: 90px !important;
-}
-
-.desktop-profile-table th:nth-child(10),
-.desktop-profile-table td:nth-child(10) {
-  width: 260px !important;
-}
-
 .desktop-profile-table tbody tr:nth-child(even) {
   background: #f3f4f6 !important;
 }
@@ -66,9 +55,22 @@
   background: #ffffff !important;
 }
 
-.desktop-profile-table td,
-.desktop-profile-table th {
-  vertical-align: middle !important;
+.desktop-profile-table .photo-name-cell,
+.desktop-profile-table .server-name-contact-cell {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  min-width: 0 !important;
+}
+
+.desktop-profile-table .server-name-wrap {
+  min-width: 0 !important;
+}
+
+.desktop-profile-table .server-name-wrap .link-button {
+  max-width: 100% !important;
+  white-space: normal !important;
+  text-align: left !important;
 }
 
 .desktop-profile-table .row-actions {
@@ -77,6 +79,7 @@
   justify-content: flex-start !important;
   gap: 0.55rem !important;
   flex-wrap: nowrap !important;
+  min-width: 0 !important;
 }
 
 .desktop-profile-table .row-actions select {
@@ -115,6 +118,12 @@
 
 .enhanced-profile-photo:hover {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important;
+}
+
+@media (max-width: 1280px) {
+  .desktop-profile-table tr {
+    grid-template-columns: 250px 110px 150px 150px 110px 78px 220px !important;
+  }
 }
 
 @media (max-width: 900px) {
