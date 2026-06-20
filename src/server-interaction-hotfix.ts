@@ -1,5 +1,3 @@
-const headers = ["Nombre", "Clase", "Ministerio", "Departamento", "Estado", "Tipo", "Acciones"];
-
 let started = false;
 let timer = 0;
 
@@ -10,7 +8,6 @@ export function initServerInteractionHotfix() {
   const run = () => {
     window.clearTimeout(timer);
     timer = window.setTimeout(() => {
-      normalizeServerTable();
       ensureDeleteButtons();
       protectDirectActions();
       translateServersCopy();
@@ -20,35 +17,6 @@ export function initServerInteractionHotfix() {
   run();
   const observer = new MutationObserver(run);
   observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-}
-
-function normalizeServerTable() {
-  document.querySelectorAll<HTMLTableElement>(".desktop-profile-table table").forEach((table) => {
-    const headerRow = table.querySelector<HTMLTableRowElement>("thead tr");
-    if (headerRow) {
-      const current = Array.from(headerRow.children).map((cell) => cell.textContent?.trim() ?? "");
-      if (current.length !== headers.length || current.some((label, index) => normalize(label) !== normalize(headers[index]))) {
-        headerRow.replaceChildren(...headers.map((label) => {
-          const th = document.createElement("th");
-          th.textContent = label;
-          return th;
-        }));
-      }
-    }
-
-    table.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((row) => {
-      const cells = Array.from(row.children) as HTMLTableCellElement[];
-      if (cells.length <= headers.length) return;
-
-      const actionCell = row.querySelector<HTMLElement>(".row-actions")?.closest("td") as HTMLTableCellElement | null;
-      const safeActionCell = actionCell ?? cells[cells.length - 1];
-      const typeCell = cells[5];
-      typeCell.textContent = abbreviateType(typeCell.textContent ?? "");
-      row.replaceChildren(cells[0], cells[1], cells[2], cells[3], cells[4], typeCell, safeActionCell);
-    });
-
-    table.querySelectorAll<HTMLTableCellElement>("td[colspan]").forEach((cell) => cell.setAttribute("colspan", String(headers.length)));
-  });
 }
 
 function ensureDeleteButtons() {
@@ -65,7 +33,9 @@ function ensureDeleteButtons() {
 }
 
 function protectDirectActions() {
-  document.querySelectorAll<HTMLElement>(".enhanced-profile-photo, .quick-contact, .quick-contact-actions a, .row-actions button, .row-actions select").forEach((element) => {
+  document.querySelectorAll<HTMLElement>(
+    ".enhanced-profile-photo, .quick-contact, .quick-contact-actions a, .row-actions button, .row-actions select",
+  ).forEach((element) => {
     element.style.pointerEvents = "auto";
     element.style.position = "relative";
     element.style.zIndex = "5";
@@ -101,20 +71,16 @@ function translateServersCopy() {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     let node = walker.nextNode();
     while (node) {
+      const parent = node.parentElement;
       const text = node.textContent ?? "";
       const trimmed = text.trim();
       const next = pairs.get(trimmed);
-      if (next && next !== trimmed) node.textContent = text.replace(trimmed, next);
+      if (next && next !== trimmed && !parent?.closest(".brand-name, .topbar-title, .user-pill, .participant-badge")) {
+        node.textContent = text.replace(trimmed, next);
+      }
       node = walker.nextNode();
     }
   });
-}
-
-function abbreviateType(value: string) {
-  const normalized = normalize(value);
-  if (normalized.startsWith("ministerial")) return "MINIS.";
-  if (normalized.startsWith("administrativo")) return "ADMIN.";
-  return value.trim().slice(0, 6).toUpperCase();
 }
 
 function normalize(value: string) {
