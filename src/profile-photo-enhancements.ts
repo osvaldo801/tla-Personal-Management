@@ -34,7 +34,7 @@ export function initProfilePhotoEnhancements() {
     window.clearTimeout(enhanceTimer);
     enhanceTimer = window.setTimeout(enhanceProfilePhotos, 120);
   });
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 }
 
 async function refreshProfiles() {
@@ -90,7 +90,7 @@ function enhanceRows() {
 function simplifyServerTable() {
   document.querySelectorAll<HTMLTableElement>(".desktop-profile-table").forEach((table) => {
     const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>("thead th"));
-    const headerLabels = ["Nombre", "Clase", "Ministerio", "Departamento", "Estado", "Tipo", "Acciones"];
+    const headerLabels = getServerTableLabels(headers);
     if (headers.length !== headerLabels.length || headers.some((header, index) => normalizeText(header.textContent ?? "") !== normalizeText(headerLabels[index]))) {
       const headerRow = table.querySelector<HTMLTableRowElement>("thead tr");
       if (headerRow) {
@@ -116,6 +116,15 @@ function simplifyServerTable() {
 
     table.querySelectorAll<HTMLTableCellElement>("td[colspan]").forEach((cell) => cell.setAttribute("colspan", "7"));
   });
+}
+
+function getServerTableLabels(headers: HTMLTableCellElement[]) {
+  const activeLanguage = document.querySelector(".language-toggle button.active")?.textContent?.trim().toLowerCase();
+  const firstHeader = normalizeText(headers[0]?.textContent ?? "");
+  const isEnglish = activeLanguage === "en" || firstHeader === "name";
+  return isEnglish
+    ? ["Name", "Class", "Ministry", "Department", "Status", "Type", "Actions"]
+    : ["Nombre", "Clase", "Ministerio", "Departamento", "Estado", "Tipo", "Acciones"];
 }
 
 function createQuickActions(profile: ServerPhotoProfile) {
