@@ -10,6 +10,7 @@ export function initServerInteractionHotfix() {
     timer = window.setTimeout(() => {
       ensureDeleteButtons();
       protectDirectActions();
+      normalizeServerTable();
       translateServersCopy();
     }, 160);
   };
@@ -48,8 +49,44 @@ function protectDirectActions() {
   });
 }
 
+function normalizeServerTable() {
+  const activeLanguage = getActiveLanguage();
+  const isEnglish = activeLanguage === "en";
+  translateServerTableHeaders(isEnglish);
+
+  document.querySelectorAll<HTMLTableRowElement>(".desktop-profile-table tbody tr").forEach((row) => {
+    const cells = Array.from(row.children) as HTMLTableCellElement[];
+    if (!cells.length) return;
+
+    const colSpanCell = cells.find((cell) => cell.hasAttribute("colspan"));
+    if (colSpanCell) {
+      colSpanCell.setAttribute("colspan", "7");
+      row.replaceChildren(colSpanCell);
+      return;
+    }
+
+    const actionCell = cells.find((cell) => Boolean(cell.querySelector(".row-actions"))) ?? cells[cells.length - 1];
+    const normalizedCells =
+      cells.length >= 10
+        ? [cells[0], cells[1], cells[2], cells[3], cells[4], cells[5], actionCell]
+        : cells.length >= 7
+          ? [cells[0], cells[1], cells[2], cells[3], cells[4], cells[5], actionCell]
+          : cells;
+
+    if (normalizedCells.length === 7 && normalizedCells.some((cell, index) => row.children[index] !== cell)) {
+      row.replaceChildren(...normalizedCells);
+    }
+
+    const typeCell = row.children[5] as HTMLTableCellElement | undefined;
+    if (typeCell) typeCell.textContent = abbreviateType(typeCell.textContent ?? "");
+
+    const finalActionCell = row.children[6] as HTMLTableCellElement | undefined;
+    if (finalActionCell) finalActionCell.classList.add("server-actions-cell");
+  });
+}
+
 function translateServersCopy() {
-  const activeLanguage = document.querySelector(".language-toggle button.active")?.textContent?.trim().toLowerCase();
+  const activeLanguage = getActiveLanguage();
   const isEnglish = activeLanguage === "en";
 
   document.querySelectorAll<HTMLElement>(".page-heading h1, .content h1").forEach((heading) => {
@@ -107,6 +144,21 @@ function translateServersCopy() {
       node = walker.nextNode();
     }
   });
+}
+
+function getActiveLanguage() {
+  const active = document.querySelector(".language-toggle button.active")?.textContent?.trim().toLowerCase();
+  if (active === "en" || active === "es") return active;
+  const toggleText = document.querySelector(".language-toggle")?.textContent?.replace(/\s+/g, "").toLowerCase() ?? "";
+  if (toggleText.includes("/en") && !toggleText.startsWith("es/")) return "en";
+  return "es";
+}
+
+function abbreviateType(value: string) {
+  const normalized = normalize(value);
+  if (normalized.startsWith("ministerial") || normalized === "minis.") return "MINIS";
+  if (normalized.startsWith("administrativo") || normalized === "admin.") return "ADMIN";
+  return value.trim().slice(0, 5).toUpperCase();
 }
 
 function translateServerTableHeaders(isEnglish: boolean) {
