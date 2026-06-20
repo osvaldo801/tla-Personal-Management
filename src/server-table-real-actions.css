@@ -1,5 +1,5 @@
 .version-label::after {
-  content: "Version 0.3.33" !important;
+  content: "Version 0.3.34" !important;
 }
 
 .desktop-profile-table .table-scroll {
@@ -23,7 +23,7 @@
 
 .desktop-profile-table tr {
   display: grid !important;
-  grid-template-columns: minmax(250px, 1.6fr) 118px minmax(150px, 1fr) minmax(150px, 1fr) 112px 76px 244px !important;
+  grid-template-columns: minmax(260px, 1.35fr) 118px minmax(170px, 0.95fr) minmax(170px, 0.95fr) 112px 82px minmax(250px, 0.9fr) !important;
   align-items: center !important;
   width: 100% !important;
 }
@@ -38,21 +38,16 @@
   overflow-wrap: anywhere !important;
 }
 
-.desktop-profile-table th:nth-child(7),
-.desktop-profile-table td:nth-child(7),
-.desktop-profile-table th:nth-child(8),
-.desktop-profile-table td:nth-child(8),
-.desktop-profile-table th:nth-child(9),
-.desktop-profile-table td:nth-child(9) {
-  display: none !important;
-}
-
-.desktop-profile-table th:nth-child(10),
-.desktop-profile-table td:nth-child(10) {
+.desktop-profile-table th:last-child,
+.desktop-profile-table td:last-child,
+.desktop-profile-table td:has(.row-actions) {
   display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
   grid-column: 7 !important;
   width: auto !important;
   min-width: 0 !important;
+  overflow: visible !important;
 }
 
 .desktop-profile-table tbody tr:nth-child(even) {
@@ -88,6 +83,7 @@
   gap: 0.5rem !important;
   flex-wrap: nowrap !important;
   min-width: 0 !important;
+  width: 100% !important;
 }
 
 .desktop-profile-table .row-actions select {
@@ -116,8 +112,8 @@
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 40px !important;
-  min-width: 40px !important;
+  width: 42px !important;
+  min-width: 42px !important;
   padding-inline: 0 !important;
 }
 
@@ -135,7 +131,7 @@
 
 @media (max-width: 1280px) {
   .desktop-profile-table tr {
-    grid-template-columns: 240px 104px 140px 140px 104px 70px 232px !important;
+    grid-template-columns: 250px 104px 150px 150px 104px 76px minmax(232px, 1fr) !important;
   }
 
   .desktop-profile-table .row-actions select {
