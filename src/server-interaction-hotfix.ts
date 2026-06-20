@@ -15,16 +15,17 @@ export function initServerInteractionHotfix() {
   };
 
   run();
-  window.setInterval(run, 800);
+  window.setInterval(run, 600);
   document.addEventListener("click", (event) => {
     const target = event.target as HTMLElement | null;
     if (target?.closest(".language-toggle")) {
       window.setTimeout(run, 80);
       window.setTimeout(run, 300);
+      window.setTimeout(run, 700);
     }
   });
   const observer = new MutationObserver(run);
-  observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "style"] });
 }
 
 function ensureDeleteButtons() {
@@ -32,11 +33,8 @@ function ensureDeleteButtons() {
     button.style.display = "inline-flex";
     button.style.pointerEvents = "auto";
     button.title = button.title || "Borrar servidor";
-    if (!button.textContent?.trim()) {
-      const label = document.createElement("span");
-      label.textContent = "Borrar";
-      button.append(label);
-    }
+    button.setAttribute("aria-label", button.getAttribute("aria-label") || "Borrar servidor");
+    button.querySelectorAll("span").forEach((label) => label.remove());
   });
 }
 
@@ -46,7 +44,7 @@ function protectDirectActions() {
   ).forEach((element) => {
     element.style.pointerEvents = "auto";
     element.style.position = "relative";
-    element.style.zIndex = "5";
+    element.style.zIndex = "20";
   });
 }
 
@@ -61,6 +59,8 @@ function translateServersCopy() {
     }
   });
 
+  translateServerTableHeaders(isEnglish);
+
   const pairs = isEnglish
     ? new Map([
         ["Servidores", "Servers"],
@@ -69,6 +69,13 @@ function translateServersCopy() {
         ["Lista operativa de servidores y colaboradores.", "Operational list of servers and collaborators."],
         ["Gestión", "Management"],
         ["GESTIÓN", "MANAGEMENT"],
+        ["Buscar", "Search"],
+        ["Clase", "Class"],
+        ["Ministerio", "Ministry"],
+        ["Estado", "Status"],
+        ["Tipo", "Type"],
+        ["Acciones", "Actions"],
+        ["Editar", "Edit"],
       ])
     : new Map([
         ["Servers", "Servidores"],
@@ -77,6 +84,13 @@ function translateServersCopy() {
         ["Operational list of servers and collaborators.", "Lista operativa de servidores y colaboradores."],
         ["Management", "Gestión"],
         ["MANAGEMENT", "GESTIÓN"],
+        ["Search", "Buscar"],
+        ["Class", "Clase"],
+        ["Ministry", "Ministerio"],
+        ["Status", "Estado"],
+        ["Type", "Tipo"],
+        ["Actions", "Acciones"],
+        ["Edit", "Editar"],
       ]);
 
   document.querySelectorAll<HTMLElement>(".sidebar, .content").forEach((root) => {
@@ -87,11 +101,25 @@ function translateServersCopy() {
       const text = node.textContent ?? "";
       const trimmed = text.trim();
       const next = pairs.get(trimmed);
-      if (next && next !== trimmed && !parent?.closest(".brand-name, .topbar-title, .user-pill, .participant-badge")) {
+      if (next && next !== trimmed && !parent?.closest(".brand-name, .topbar-title, .user-pill, .participant-badge, option")) {
         node.textContent = text.replace(trimmed, next);
       }
       node = walker.nextNode();
     }
+  });
+}
+
+function translateServerTableHeaders(isEnglish: boolean) {
+  const labels = isEnglish
+    ? ["Name", "Class", "Ministry", "Department", "Status", "Type", "Actions"]
+    : ["Nombre", "Clase", "Ministerio", "Departamento", "Estado", "Tipo", "Acciones"];
+
+  document.querySelectorAll<HTMLTableRowElement>(".desktop-profile-table thead tr").forEach((row) => {
+    const cells = Array.from(row.querySelectorAll<HTMLTableCellElement>("th"));
+    if (cells.length !== labels.length) return;
+    cells.forEach((cell, index) => {
+      cell.textContent = labels[index];
+    });
   });
 }
 
