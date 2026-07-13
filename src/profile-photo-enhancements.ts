@@ -506,14 +506,16 @@ function abbreviateType(value: string) {
 
 function findProfile(containerText: string, name: string) {
   const normalizedName = normalizeText(name);
+  const nameMatches = profiles.filter((profile) => normalizeText(profile.full_name) === normalizedName);
+  if (nameMatches.length === 1) return nameMatches[0] ?? null;
+
   const email = containerText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]?.toLowerCase() ?? "";
   const phone = normalizePhone(containerText);
-  return profiles.find((profile) => {
-    if (normalizeText(profile.full_name) !== normalizedName) return false;
+  return nameMatches.find((profile) => {
     if (email && (profile.email ?? "").toLowerCase() === email) return true;
-    if (phone && normalizePhone(profile.phone ?? "") && phone.includes(normalizePhone(profile.phone ?? ""))) return true;
-    return !email && !phone;
-  }) ?? null;
+    const profilePhone = normalizePhone(profile.phone ?? "");
+    return Boolean(phone && profilePhone && phone.includes(profilePhone));
+  }) ?? nameMatches[0] ?? null;
 }
 
 function inputValue(form: HTMLElement, labelText: string) {
