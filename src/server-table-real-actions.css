@@ -1,5 +1,5 @@
 .version-label::after {
-  content: "Version 0.3.38" !important;
+  content: "Version 0.3.39" !important;
 }
 
 @media (min-width: 901px) {
