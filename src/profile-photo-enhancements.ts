@@ -111,7 +111,14 @@ function simplifyServerTable() {
       const actionCell = cells.find((cell) => Boolean(cell.querySelector(".row-actions"))) ?? cells[cells.length - 1];
       const typeCell = cells[5];
       typeCell.textContent = abbreviateType(typeCell.textContent ?? "");
-      row.replaceChildren(cells[0], cells[1], cells[2], cells[3], cells[4], typeCell, actionCell);
+      const normalizedCells = [cells[0], cells[1], cells[2], cells[3], cells[4], typeCell, actionCell];
+      const needsNormalization =
+        cells.length !== normalizedCells.length ||
+        normalizedCells.some((cell, index) => row.children[index] !== cell);
+
+      // Replacing an already-correct row between pointerdown and click cancels
+      // desktop interactions. Only touch legacy ten-column rows once.
+      if (needsNormalization) row.replaceChildren(...normalizedCells);
     });
 
     table.querySelectorAll<HTMLTableCellElement>("td[colspan]").forEach((cell) => cell.setAttribute("colspan", "7"));
