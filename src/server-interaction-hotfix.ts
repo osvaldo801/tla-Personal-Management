@@ -59,8 +59,7 @@ function normalizeServerTable() {
 
     const colSpanCell = cells.find((cell) => cell.hasAttribute("colspan"));
     if (colSpanCell) {
-      colSpanCell.setAttribute("colspan", "7");
-      row.replaceChildren(colSpanCell);
+      if (colSpanCell.getAttribute("colspan") !== "7") colSpanCell.setAttribute("colspan", "7");
       return;
     }
 
@@ -77,7 +76,10 @@ function normalizeServerTable() {
     }
 
     const typeCell = row.children[5] as HTMLTableCellElement | undefined;
-    if (typeCell) typeCell.textContent = abbreviateType(typeCell.textContent ?? "");
+    if (typeCell) {
+      const abbreviatedType = abbreviateType(typeCell.textContent ?? "");
+      if ((typeCell.textContent ?? "").trim() !== abbreviatedType) typeCell.textContent = abbreviatedType;
+    }
 
     const finalActionCell = row.children[6] as HTMLTableCellElement | undefined;
     if (finalActionCell) finalActionCell.classList.add("server-actions-cell");
@@ -169,7 +171,7 @@ function translateServerTableHeaders(isEnglish: boolean) {
     const cells = Array.from(row.querySelectorAll<HTMLTableCellElement>("th"));
     if (cells.length !== labels.length) return;
     cells.forEach((cell, index) => {
-      cell.textContent = labels[index];
+      if ((cell.textContent ?? "").trim() !== labels[index]) cell.textContent = labels[index];
     });
   });
 }
