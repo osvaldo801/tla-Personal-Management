@@ -498,9 +498,6 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
                 <th>Departamento</th>
                 <th>Estado</th>
                 <th>Tipo</th>
-                <th>Teléfono</th>
-                <th>Email</th>
-                <th>Último comentario</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -519,7 +516,7 @@ export function ProfilesPage({ initialQuery = "" }: { initialQuery?: string }) {
               ))}
               {!isLoading && filteredProfiles.length === 0 && (
                 <tr>
-                  <td colSpan={10}>No hay servidores para mostrar.</td>
+                  <td colSpan={7}>No hay servidores para mostrar.</td>
                 </tr>
               )}
             </tbody>
@@ -591,14 +588,6 @@ function ProfileRow({
         <span className={`status-pill status-${profile.service_status.toLowerCase()}`}>{profile.service_status}</span>
       </td>
       <td>{profile.service_type}</td>
-      <td>{profile.phone}</td>
-      <td>{profile.email}</td>
-      <td className="comment-cell">
-        <strong>{profile.last_comment || "Sin comentarios"}</strong>
-        {profile.last_comment && (
-          <span>{profile.last_comment_author || "Usuario"} - {formatDateTime(profile.last_comment_at)}</span>
-        )}
-      </td>
       <td>
         <div className="row-actions">
           {isAdmin && (
