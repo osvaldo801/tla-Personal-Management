@@ -16,7 +16,6 @@ export function initServerInteractionHotfix() {
   };
 
   run();
-  window.setInterval(run, 600);
   document.addEventListener("click", (event) => {
     const target = event.target as HTMLElement | null;
     if (target?.closest(".language-toggle")) {
@@ -26,7 +25,7 @@ export function initServerInteractionHotfix() {
     }
   });
   const observer = new MutationObserver(run);
-  observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class", "style"] });
+  observer.observe(document.body, { childList: true, subtree: true });
 }
 
 function ensureDeleteButtons() {
