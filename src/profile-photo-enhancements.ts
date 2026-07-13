@@ -110,7 +110,8 @@ function simplifyServerTable() {
 
       const actionCell = cells.find((cell) => Boolean(cell.querySelector(".row-actions"))) ?? cells[cells.length - 1];
       const typeCell = cells[5];
-      typeCell.textContent = abbreviateType(typeCell.textContent ?? "");
+      const abbreviatedType = abbreviateType(typeCell.textContent ?? "");
+      if ((typeCell.textContent ?? "").trim() !== abbreviatedType) typeCell.textContent = abbreviatedType;
       const normalizedCells = [cells[0], cells[1], cells[2], cells[3], cells[4], typeCell, actionCell];
       const needsNormalization =
         cells.length !== normalizedCells.length ||
